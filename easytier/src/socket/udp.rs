@@ -260,7 +260,8 @@ mod tests {
             };
             assert_eq!(result, 0, "{}", std::io::Error::last_os_error());
             assert_eq!(len, 4);
-            assert_eq!(u32::from_be_bytes(index_bytes), expected_index);
+            // IP_UNICAST_IF 的设置值使用网络字节序，读取值使用主机字节序。
+            assert_eq!(u32::from_ne_bytes(index_bytes), expected_index);
         }
     }
 
