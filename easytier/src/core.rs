@@ -1719,6 +1719,12 @@ enabled = true
         assert_eq!(patch.disable_relay_data, Some(true));
         assert_eq!(patch.enable_ipv6, None);
 
+        // 未指定时保留原配置；显式空值允许清除此前的源地址绑定。
+        for address in ["192.0.2.10", "2001:db8::10", ""] {
+            let patch = parse_flags(&["easytier", "--bind-address", address]).unwrap();
+            assert_eq!(patch.bind_address.as_deref(), Some(address));
+        }
+
         // A negated flag can be given bare, and bare means the value it states.
         let patch = parse_flags(&["easytier", "--disable-ipv6"]).unwrap();
         assert_eq!(patch.enable_ipv6, Some(false));

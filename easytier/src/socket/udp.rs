@@ -146,6 +146,17 @@ impl RuntimeUdpSocketFactory {
             return BindDev::from(bind_device.as_str());
         }
 
+        // An explicit non-wildcard local address identifies the underlay
+        // interface. Keep the socket on that interface even for STUN and
+        // hole-punch sockets, whose purpose defaults historically skipped
+        // automatic device binding.
+        if options
+            .local_addr
+            .is_some_and(|local_addr| !local_addr.ip().is_unspecified())
+        {
+            return BindDev::Auto;
+        }
+
         if matches!(
             options.purpose,
             UdpSocketPurpose::DirectConnect
@@ -215,6 +226,43 @@ mod tests {
     use crate::host_runtime::native_host_runtime;
 
     use super::*;
+
+    #[cfg(target_os = "windows")]
+    #[tokio::test]
+    async fn explicit_bind_address_sets_windows_underlay_interface() {
+        use std::os::windows::io::AsRawSocket;
+        use windows::{
+            Win32::Networking::WinSock::{IP_UNICAST_IF, IPPROTO_IP, SOCKET, getsockopt},
+            core::PSTR,
+        };
+
+        let local_addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+        let interface = crate::tunnel::common::get_interface_name_by_ip(&local_addr.ip()).unwrap();
+        let expected_index = crate::arch::windows::find_interface_index(&interface).unwrap();
+        for options in [
+            UdpBindOptions::stun_probe(),
+            UdpBindOptions::hole_punch_control(),
+        ] {
+            let socket = create_udp_socket(&options.with_local_addr(Some(local_addr)))
+                .await
+                .unwrap();
+            let mut index_bytes = [0u8; 4];
+            let mut len = index_bytes.len() as i32;
+            // 验证实际 Winsock 路由约束，避免只绑定源 IP 却仍经 VPN 网卡出网。
+            let result = unsafe {
+                getsockopt(
+                    SOCKET(socket.as_raw_socket() as usize),
+                    IPPROTO_IP.0,
+                    IP_UNICAST_IF,
+                    PSTR(index_bytes.as_mut_ptr()),
+                    &mut len,
+                )
+            };
+            assert_eq!(result, 0, "{}", std::io::Error::last_os_error());
+            assert_eq!(len, 4);
+            assert_eq!(u32::from_be_bytes(index_bytes), expected_index);
+        }
+    }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     #[tokio::test]
@@ -383,6 +431,20 @@ mod tests {
         assert!(matches!(
             factory.bind_device_for(&UdpBindOptions::hole_punch_control()),
             BindDev::Disabled
+        ));
+        assert!(matches!(
+            factory.bind_device_for(
+                &UdpBindOptions::hole_punch_control()
+                    .with_local_addr(Some("192.0.2.10:0".parse().unwrap()))
+            ),
+            BindDev::Auto
+        ));
+        assert!(matches!(
+            factory.bind_device_for(
+                &UdpBindOptions::stun_probe()
+                    .with_local_addr(Some("192.0.2.10:0".parse().unwrap()))
+            ),
+            BindDev::Auto
         ));
         assert_eq!(
             factory.reuse_addr_for(&UdpBindOptions::port_bound_listener(listener_addr)),

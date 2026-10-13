@@ -89,6 +89,10 @@ message Flags {
   // Prefer direct credential peers that already relay to a destination over
   // advertising another direct edge to the same destination.
   bool prefer_peer_relay = 44 [(easytier.flag) = { default: "false" }];
+
+  // 指定底层连接、打洞和 STUN 探测的本地源地址；空字符串保持自动选择。
+  // 此设置不改变监听地址和 TUN 网卡配置。
+  string bind_address = 45 [(easytier.flag) = { default: "", form: true }];
 }
 
 

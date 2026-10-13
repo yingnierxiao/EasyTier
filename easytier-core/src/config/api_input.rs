@@ -71,6 +71,7 @@ pub(crate) fn set_network_flags(result: &mut NetworkConfig, flags: FlagsPatch) {
     result.p2p_only = flags.p2p_only;
     result.lazy_p2p = flags.lazy_p2p;
     result.bind_device = flags.bind_device;
+    result.bind_address = flags.bind_address;
     result.socket_mark = flags.socket_mark;
     result.no_tun = flags.no_tun;
     result.enable_exit_node = flags.enable_exit_node;
@@ -524,6 +525,10 @@ impl NetworkConfigExt for NetworkConfig {
             p2p_only: self.p2p_only,
             lazy_p2p: self.lazy_p2p,
             bind_device: self.bind_device,
+            bind_address: self
+                .bind_address
+                .as_ref()
+                .map(|address| address.trim().to_owned()),
             no_tun: self.no_tun,
             enable_exit_node: self.enable_exit_node,
             relay_all_peer_rpc: self.relay_all_peer_rpc,
@@ -846,6 +851,27 @@ mod tests {
             .gen_config()
             .is_err()
         );
+    }
+
+    #[cfg(feature = "config-write")]
+    #[test]
+    fn underlay_bind_address_survives_api_and_toml_round_trip() {
+        for (input_address, expected) in [
+            (None, None),
+            (Some(""), Some("")),
+            (Some(" 192.0.2.10 "), Some("192.0.2.10")),
+            (Some("2001:db8::10"), Some("2001:db8::10")),
+        ] {
+            let input = NetworkConfig {
+                bind_address: input_address.map(str::to_owned),
+                ..standalone_config()
+            };
+            let config = input.gen_config().unwrap();
+            let restored = TomlConfigLoader::new_from_str(&config.dump()).unwrap();
+            let output = NetworkConfig::new_from_config(&restored).unwrap();
+            assert_eq!(output.bind_address.as_deref(), expected);
+            assert_eq!(restored.get_flags().bind_address, expected.unwrap_or(""));
+        }
     }
 
     #[test]

@@ -463,15 +463,18 @@ where
         if let Some(stun_override) = &adapters.stun_override {
             return stun_override.clone();
         }
-        Arc::new(StunInfoCollector::new_with_socket_contexts(
-            adapters.host.clone(),
-            adapters.dns.clone(),
-            config.direct.udp_bind.context.clone(),
-            config.direct.tcp_bind.context.clone(),
-            config.stun.udp_servers.clone(),
-            config.stun.tcp_servers.clone(),
-            config.stun.udp_v6_servers.clone(),
-        ))
+        Arc::new(
+            StunInfoCollector::new_with_socket_contexts_and_bind_address(
+                adapters.host.clone(),
+                adapters.dns.clone(),
+                config.direct.udp_bind.context.clone(),
+                config.direct.tcp_bind.context.clone(),
+                config.stun.udp_servers.clone(),
+                config.stun.tcp_servers.clone(),
+                config.stun.udp_v6_servers.clone(),
+                config.direct.bind_address,
+            ),
+        )
     }
 
     /// Constructs the complete portable runtime for one EasyTier instance.
@@ -727,6 +730,7 @@ where
                     udp_hole_punch_platform,
                     events.clone(),
                     direct_options.udp_bind.context.clone(),
+                    direct_options.bind_address,
                     protocol.clone(),
                 )
             });
@@ -796,11 +800,12 @@ where
             .as_ref()
             .zip(protocol.as_ref())
             .map(|(stun, protocol)| {
-                TcpHolePunchConnector::new(
+                TcpHolePunchConnector::new_with_bind_address(
                     peer_manager.clone(),
                     host.clone(),
                     stun.clone(),
                     direct_options.tcp_bind.context.clone(),
+                    direct_options.bind_address,
                     protocol.clone(),
                     Arc::new(crate::connectivity::protocol::CoreServerProtocolUpgrader::<
                         HostAcceptedTcpSocket<H>,
