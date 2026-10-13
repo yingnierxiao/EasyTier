@@ -480,6 +480,15 @@ function removeVpnPortalClient(index: number) {
 
               <div class="flex flex-row gap-x-9 flex-wrap">
                 <div class="flex flex-col gap-2 basis-5/12 grow">
+                  <label for="bind_address">{{ t('bind_address') }}</label>
+                  <InputText id="bind_address" v-model="curNetwork.bind_address" aria-describedby="bind_address-help"
+                    :placeholder="t('bind_address_placeholder')" />
+                  <small id="bind_address-help" class="text-surface-500 dark:text-surface-400">{{ t('bind_address_help') }}</small>
+                </div>
+              </div>
+
+              <div class="flex flex-row gap-x-9 flex-wrap">
+                <div class="flex flex-col gap-2 basis-5/12 grow">
                   <div class="flex">
                     <label for="mtu">{{ t('mtu') }}</label>
                     <span class="pi pi-question-circle ml-2 self-center" v-tooltip="t('mtu_help')"></span>

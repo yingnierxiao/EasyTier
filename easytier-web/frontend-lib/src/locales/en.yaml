@@ -213,6 +213,10 @@ lazy_p2p_help: Only try to establish P2P when traffic actually targets a peer. P
 bind_device: Bind to Physical Device Only
 bind_device_help: Use only the physical network interface to prevent EasyTier from connecting via virtual networks.
 
+bind_address: Underlay Source Address
+bind_address_placeholder: Automatic when empty, e.g. 192.168.1.10
+bind_address_help: Enter the physical interface's local IP for connections, STUN and hole punching of the same address family. An IPv4 address does not constrain IPv6. Update it after changing networks and reconnect to apply.
+
 no_tun: No TUN Mode
 no_tun_help: Do not use a TUN interface, suitable for environments without administrator privileges. This node is only accessible; accessing other nodes requires SOCKS5.
 

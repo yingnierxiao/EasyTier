@@ -336,6 +336,7 @@ function makeConfig(): NetworkConfig {
     },
     listener_urls: ['tcp://0.0.0.0:12010'],
     dev_name: 'tun-test',
+    bind_address: '192.0.2.10',
     mtu: 1280,
     instance_recv_bps_limit: '9007199254740993',
     enable_relay_network_whitelist: true,
@@ -419,6 +420,7 @@ describe('Config.vue network config projection', () => {
     expect(input(wrapper, '#subnet-proxy').value).toBe('10.10.0.0/16,172.16.1.0/24')
     expect(input(wrapper, '#vpn_portal_wireguard_listen').value).toBe('0.0.0.0:22023')
     expect(input(wrapper, '#dev_name').value).toBe('tun-test')
+    expect(input(wrapper, '#bind_address').value).toBe('192.0.2.10')
     expect(input(wrapper, '#mtu').value).toBe('1280')
     expect(input(wrapper, '#instance_recv_bps_limit').value).toBe('9007199254740993')
     expect(input(wrapper, '#relay_network_whitelist').value).toBe('network-a')
@@ -450,6 +452,7 @@ describe('Config.vue network config projection', () => {
     await setInput(wrapper, '#vpn_portal_wireguard_listen', '[::]:23000')
     await setInput(wrapper, 'input[data-add-label="add_listener_url"]', 'tcp://0.0.0.0:13010')
     await setInput(wrapper, '#dev_name', 'tun-edited')
+    await setInput(wrapper, '#bind_address', '192.0.2.20')
     await setInput(wrapper, '#mtu', '1260')
     await setInput(wrapper, '#instance_recv_bps_limit', '9007199254740993')
     await setInput(wrapper, '#relay_network_whitelist', 'network-edited')
@@ -486,6 +489,7 @@ describe('Config.vue network config projection', () => {
       },
       listener_urls: ['tcp://0.0.0.0:13010'],
       dev_name: 'tun-edited',
+      bind_address: '192.0.2.20',
       mtu: 1260,
       instance_recv_bps_limit: '9007199254740993',
       relay_network_whitelist: ['network-edited'],
@@ -504,6 +508,7 @@ describe('Config.vue network config projection', () => {
 
     const backend = toBackendNetworkConfig(curNetwork)
     expect(backend).toMatchObject({
+      bind_address: '192.0.2.20',
       virtual_ipv4: '10.7.7.7',
       network_name: 'mesh-edited',
       network_secret: 'secret-edited',
@@ -528,6 +533,13 @@ describe('Config.vue network config projection', () => {
         dst_port: 9090,
       }],
     })
+  })
+
+  it('clears a saved underlay source address through the form and backend JSON', async () => {
+    const { curNetwork, wrapper } = mountConfig()
+    await setInput(wrapper, '#bind_address', '')
+    expect(toBackendNetworkConfig(curNetwork).bind_address).toBe('')
+    wrapper.unmount()
   })
 
   it('shows a flag the configuration does not state as the value the core resolves', async () => {

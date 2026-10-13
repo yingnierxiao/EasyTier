@@ -214,6 +214,10 @@ lazy_p2p_help: 仅在实际流量需要某个对等节点时才尝试建立 P2P�
 bind_device: 仅使用物理网卡
 bind_device_help: 仅使用物理网卡，避免 EasyTier 通过其他虚拟网建立连接。
 
+bind_address: 底层连接源地址
+bind_address_placeholder: 留空自动选择，例如 192.168.1.10
+bind_address_help: 填写物理网卡的本地 IP，让同地址族的连接、STUN 和打洞使用该网卡；IPv4 地址不约束 IPv6。切换网络后需更新此地址，重新连接后生效。
+
 no_tun: 无 TUN 模式
 no_tun_help: 不使用 TUN 网卡，适合无管理员权限时使用。本节点仅允许被访问。访问其他节点需要使用 SOCK5
 
