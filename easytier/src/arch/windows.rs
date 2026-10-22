@@ -1,5 +1,7 @@
 use std::{io, mem::ManuallyDrop, net::SocketAddr, os::windows::io::AsRawSocket};
 
+pub(crate) mod underlay;
+
 use anyhow::Context;
 use network_interface::NetworkInterfaceConfig;
 use windows::{
@@ -90,7 +92,14 @@ pub fn find_interface_index(iface_name: &str) -> io::Result<u32> {
 
 pub fn set_ip_unicast_if(socket: SOCKET, addr: &SocketAddr, iface: &str) -> io::Result<()> {
     let if_index = find_interface_index(iface)?;
+    set_ip_unicast_if_index(socket, addr, if_index)
+}
 
+pub(crate) fn set_ip_unicast_if_index(
+    socket: SOCKET,
+    addr: &SocketAddr,
+    if_index: u32,
+) -> io::Result<()> {
     unsafe {
         // https://docs.microsoft.com/en-us/windows/win32/winsock/ipproto-ip-socket-options
         let ret = match addr {
@@ -113,8 +122,8 @@ pub fn set_ip_unicast_if(socket: SOCKET, addr: &SocketAddr, iface: &str) -> io::
         if ret == SOCKET_ERROR {
             let err = std::io::Error::from_raw_os_error(WSAGetLastError().0);
             tracing::error!(
-                "set IP_UNICAST_IF / IPV6_UNICAST_IF interface: {}, index: {}, error: {}",
-                iface,
+                "set IP_UNICAST_IF / IPV6_UNICAST_IF address: {}, index: {}, error: {}",
+                addr,
                 if_index,
                 err
             );

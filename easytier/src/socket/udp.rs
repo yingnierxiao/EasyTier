@@ -146,6 +146,15 @@ impl RuntimeUdpSocketFactory {
             return BindDev::from(bind_device.as_str());
         }
 
+        // Windows loopback sockets must use the OS loopback route, not an interface constraint.
+        if cfg!(target_os = "windows")
+            && options
+                .local_addr
+                .is_some_and(|local_addr| local_addr.ip().is_loopback())
+        {
+            return BindDev::Disabled;
+        }
+
         // An explicit non-wildcard local address identifies the underlay
         // interface. Keep the socket on that interface even for STUN and
         // hole-punch sockets, whose purpose defaults historically skipped
@@ -187,7 +196,7 @@ pub(crate) async fn create_udp_socket(options: &UdpBindOptions) -> anyhow::Resul
     let bind_addr = options
         .local_addr
         .unwrap_or_else(|| SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, 0)));
-    Ok(bind::<UdpSocket>()
+    let socket = bind::<UdpSocket>()
         .addr(bind_addr)
         .dev(factory.bind_device_for(options))
         .net_ns(NetNS::from_socket_context(&options.context))
@@ -197,7 +206,23 @@ pub(crate) async fn create_udp_socket(options: &UdpBindOptions) -> anyhow::Resul
         .maybe_socket_mark(options.context.socket_mark)
         .need_protect(options.need_protect)
         .call()
-        .await?)
+        .await?;
+    #[cfg(target_os = "windows")]
+    if matches!(
+        options.purpose,
+        UdpSocketPurpose::StunProbe
+            | UdpSocketPurpose::HolePunchControl
+            | UdpSocketPurpose::HolePunchCandidate
+            | UdpSocketPurpose::DirectConnect
+    ) {
+        crate::arch::windows::underlay::bind_socket(
+            &socket,
+            bind_addr,
+            options.bind_device.as_deref(),
+            options.need_protect,
+        )?;
+    }
+    Ok(socket)
 }
 
 #[async_trait]
@@ -222,10 +247,47 @@ mod tests {
             send_v6_hole_punch_control_packet,
         },
     };
+    use network_interface::NetworkInterfaceConfig as _;
 
     use crate::host_runtime::native_host_runtime;
 
     use super::*;
+
+    #[cfg(target_os = "windows")]
+    #[tokio::test]
+    #[ignore = "requires an active physical Windows default route"]
+    async fn automatic_windows_underlay_bypasses_vpn() {
+        use std::os::windows::io::AsRawSocket;
+        use windows::{
+            Win32::Networking::WinSock::{IP_UNICAST_IF, IPPROTO_IP, SOCKET, getsockopt},
+            core::PSTR,
+        };
+
+        for options in [
+            UdpBindOptions::stun_probe(),
+            UdpBindOptions::hole_punch_control(),
+            UdpBindOptions::hole_punch_candidate(),
+            UdpBindOptions::direct_connect(),
+        ] {
+            let purpose = options.purpose;
+            let socket = create_udp_socket(&options).await.unwrap();
+            let mut value = [0u8; 4];
+            let mut len = 4;
+            let result = unsafe {
+                getsockopt(
+                    SOCKET(socket.as_raw_socket() as usize),
+                    IPPROTO_IP.0,
+                    IP_UNICAST_IF,
+                    PSTR(value.as_mut_ptr()),
+                    &mut len,
+                )
+            };
+            assert_eq!(result, 0);
+            let index = u32::from_ne_bytes(value);
+            assert_ne!(index, 0, "{purpose:?} still follows VPN routes");
+            println!("{purpose:?}: physical interface index = {index}");
+        }
+    }
 
     #[cfg(target_os = "windows")]
     #[tokio::test]
@@ -236,7 +298,23 @@ mod tests {
             core::PSTR,
         };
 
-        let local_addr: SocketAddr = "127.0.0.1:0".parse().unwrap();
+        let physical_index = crate::arch::windows::underlay::physical_default_interface(
+            windows::Win32::Networking::WinSock::AF_INET,
+        )
+        .unwrap();
+        let local_ip = network_interface::NetworkInterface::show()
+            .unwrap()
+            .into_iter()
+            .find(|interface| interface.index == physical_index)
+            .and_then(|interface| {
+                interface
+                    .addr
+                    .into_iter()
+                    .map(|address| address.ip())
+                    .find(|address| address.is_ipv4() && !address.is_unspecified())
+            })
+            .expect("physical default interface should have an IPv4 address");
+        let local_addr = SocketAddr::new(local_ip, 0);
         let interface = crate::tunnel::common::get_interface_name_by_ip(&local_addr.ip()).unwrap();
         let expected_index = crate::arch::windows::find_interface_index(&interface).unwrap();
         for options in [
@@ -440,6 +518,15 @@ mod tests {
             ),
             BindDev::Auto
         ));
+        if cfg!(target_os = "windows") {
+            assert!(matches!(
+                factory.bind_device_for(
+                    &UdpBindOptions::hole_punch_control()
+                        .with_local_addr(Some("127.0.0.1:0".parse().unwrap()))
+                ),
+                BindDev::Disabled
+            ));
+        }
         assert!(matches!(
             factory.bind_device_for(
                 &UdpBindOptions::stun_probe()

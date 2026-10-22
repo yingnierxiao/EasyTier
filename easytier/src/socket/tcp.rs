@@ -306,7 +306,22 @@ pub(crate) async fn bind_tcp_listener(
     if bind_options.bind_device.is_none() && purpose == TcpListenPurpose::PortLease {
         bind_options.bind_device = Some(String::new());
     }
-    let listener = create_tcp_socket(addr, &bind_options).await?.listen(1024)?;
+    let socket = create_tcp_socket(addr, &bind_options).await?;
+    #[cfg(target_os = "windows")]
+    if matches!(
+        purpose,
+        TcpListenPurpose::HolePunch
+            | TcpListenPurpose::DirectConnect
+            | TcpListenPurpose::ManualConnect
+    ) {
+        crate::arch::windows::underlay::bind_socket(
+            &socket,
+            addr,
+            bind_options.bind_device.as_deref(),
+            bind_options.need_protect,
+        )?;
+    }
+    let listener = socket.listen(1024)?;
     Ok(RuntimeTcpListener {
         listener,
         purpose,
@@ -322,6 +337,25 @@ pub(crate) async fn connect_tcp(
     let bind_options = options.bind;
 
     let socket = create_tcp_socket(remote_addr, &bind_options).await?;
+    #[cfg(target_os = "windows")]
+    if !remote_addr.ip().is_loopback()
+        && matches!(
+            purpose,
+            TcpSocketPurpose::DirectConnect
+                | TcpSocketPurpose::ManualConnect
+                | TcpSocketPurpose::HolePunch
+                | TcpSocketPurpose::StunProbe
+        )
+    {
+        crate::arch::windows::underlay::bind_socket(
+            &socket,
+            bind_options
+                .local_addr
+                .unwrap_or_else(|| unspecified_bind_addr(remote_addr)),
+            bind_options.bind_device.as_deref(),
+            bind_options.need_protect,
+        )?;
+    }
     let stream = socket.connect(remote_addr).await?;
     prepare_connected_tcp_socket(&stream, purpose)?;
     Ok(RuntimeTcpSocket::new(stream))
