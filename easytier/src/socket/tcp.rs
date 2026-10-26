@@ -307,18 +307,19 @@ pub(crate) async fn bind_tcp_listener(
         bind_options.bind_device = Some(String::new());
     }
     let socket = create_tcp_socket(addr, &bind_options).await?;
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
     if matches!(
         purpose,
         TcpListenPurpose::HolePunch
             | TcpListenPurpose::DirectConnect
             | TcpListenPurpose::ManualConnect
     ) {
-        crate::arch::windows::underlay::bind_socket(
+        super::underlay::bind_socket(
             &socket,
             addr,
             bind_options.bind_device.as_deref(),
             bind_options.need_protect,
+            &bind_options.context,
         )?;
     }
     let listener = socket.listen(1024)?;
@@ -337,7 +338,7 @@ pub(crate) async fn connect_tcp(
     let bind_options = options.bind;
 
     let socket = create_tcp_socket(remote_addr, &bind_options).await?;
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
     if !remote_addr.ip().is_loopback()
         && matches!(
             purpose,
@@ -347,13 +348,14 @@ pub(crate) async fn connect_tcp(
                 | TcpSocketPurpose::StunProbe
         )
     {
-        crate::arch::windows::underlay::bind_socket(
+        super::underlay::bind_socket(
             &socket,
             bind_options
                 .local_addr
                 .unwrap_or_else(|| unspecified_bind_addr(remote_addr)),
             bind_options.bind_device.as_deref(),
             bind_options.need_protect,
+            &bind_options.context,
         )?;
     }
     let stream = socket.connect(remote_addr).await?;

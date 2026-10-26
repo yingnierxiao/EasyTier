@@ -46,6 +46,8 @@ pub(crate) fn new_runtime_udp_session_listener(
 pub struct RuntimeUdpSocket {
     socket: Arc<UdpSocket>,
     context: SocketContext,
+    #[cfg(any(target_os = "linux", target_os = "macos"))]
+    automatic_underlay: bool,
 }
 
 impl RuntimeUdpSocket {
@@ -58,7 +60,12 @@ impl RuntimeUdpSocket {
         if let Err(err) = udp_src::enable_recv_pktinfo(&socket) {
             tracing::debug!(?err, "enable udp pktinfo failed");
         }
-        Self { socket, context }
+        Self {
+            socket,
+            context,
+            #[cfg(any(target_os = "linux", target_os = "macos"))]
+            automatic_underlay: false,
+        }
     }
 
     #[cfg(target_os = "windows")]
@@ -78,6 +85,11 @@ impl VirtualUdpSocket for RuntimeUdpSocket {
     }
 
     async fn send_to(&self, data: &[u8], addr: SocketAddr) -> std::io::Result<usize> {
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        if self.automatic_underlay && !addr.ip().is_loopback() {
+            // 共享监听端口还承担回环控制通信，只为当前数据报指定出口，不能修改整个 socket。
+            return super::underlay::send_to(&self.socket, data, addr, &self.context).await;
+        }
         self.socket.send_to(data, addr).await
     }
 
@@ -99,7 +111,7 @@ impl VirtualUdpSocket for RuntimeUdpSocket {
         if let Some(src_ip) = meta.src_ip {
             return udp_src::send_to_with_src_ip(&self.socket, src_ip, addr, data).await;
         }
-        self.socket.try_send_to(data, addr)
+        self.send_to(data, addr).await
     }
 
     async fn recv_from_with_meta(
@@ -146,11 +158,14 @@ impl RuntimeUdpSocketFactory {
             return BindDev::from(bind_device.as_str());
         }
 
-        // Windows loopback sockets must use the OS loopback route, not an interface constraint.
-        if cfg!(target_os = "windows")
-            && options
-                .local_addr
-                .is_some_and(|local_addr| local_addr.ip().is_loopback())
+        // 本机控制包必须走回环路由，不能受到桌面端自动出口约束。
+        if cfg!(any(
+            target_os = "windows",
+            target_os = "macos",
+            target_os = "linux"
+        )) && options
+            .local_addr
+            .is_some_and(|local_addr| local_addr.ip().is_loopback())
         {
             return BindDev::Disabled;
         }
@@ -207,7 +222,7 @@ pub(crate) async fn create_udp_socket(options: &UdpBindOptions) -> anyhow::Resul
         .need_protect(options.need_protect)
         .call()
         .await?;
-    #[cfg(target_os = "windows")]
+    #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
     if matches!(
         options.purpose,
         UdpSocketPurpose::StunProbe
@@ -215,11 +230,12 @@ pub(crate) async fn create_udp_socket(options: &UdpBindOptions) -> anyhow::Resul
             | UdpSocketPurpose::HolePunchCandidate
             | UdpSocketPurpose::DirectConnect
     ) {
-        crate::arch::windows::underlay::bind_socket(
+        super::underlay::bind_socket(
             &socket,
             bind_addr,
             options.bind_device.as_deref(),
             options.need_protect,
+            &options.context,
         )?;
     }
     Ok(socket)
@@ -231,10 +247,20 @@ impl VirtualUdpSocketFactory for RuntimeUdpSocketFactory {
 
     async fn bind_udp(&self, options: UdpBindOptions) -> anyhow::Result<Arc<Self::Socket>> {
         let socket = create_udp_socket(&options).await?;
-        Ok(Arc::new(RuntimeUdpSocket::new_with_context(
-            Arc::new(socket),
-            options.context,
-        )))
+        let runtime_socket = RuntimeUdpSocket::new_with_context(Arc::new(socket), options.context);
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        let runtime_socket = {
+            let mut runtime_socket = runtime_socket;
+            runtime_socket.automatic_underlay = options.purpose
+                == UdpSocketPurpose::PortBoundListener
+                && options.need_protect
+                && options.bind_device.is_none()
+                && options
+                    .local_addr
+                    .is_none_or(|addr| addr.ip().is_unspecified());
+            runtime_socket
+        };
+        Ok(Arc::new(runtime_socket))
     }
 }
 

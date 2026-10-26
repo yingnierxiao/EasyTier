@@ -24,7 +24,7 @@
     }
   },
   "productName": "easytier-gui",
-  "version": "2.7.1",
+  "version": "2.7.2",
   "identifier": "com.kkrainbow.easytier",
   "plugins": {
     "shell": {
