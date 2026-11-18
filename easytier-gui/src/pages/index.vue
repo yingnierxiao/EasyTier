@@ -339,6 +339,8 @@ async function reconnectClient() {
 }
 
 onMounted(async () => {
+  if (type() === 'android' || type() === 'ios')
+    return
   window.setTimeout(async () => {
     await setTrayMenu([
       await MenuItemShow(t('tray.show')),
@@ -373,7 +375,7 @@ const log_menu_items_popup: Ref<MenuItem[]> = ref([
       // console.log('open log dir', await getLogDirPath())
       await open(await getLogDirPath())
     },
-    visible: () => type() !== 'android',
+    visible: () => !['android', 'ios'].includes(type()),
   },
   {
     label: () => t('logging_copy_dir'),
@@ -398,6 +400,8 @@ const setting_menu_items: Ref<MenuItem[]> = ref([
     icon: 'pi pi-language',
     command: async () => {
       await I18nUtils.loadLanguageAsync((locale.value === 'en' ? 'cn' : 'en'))
+      if (type() === 'android' || type() === 'ios')
+        return
       await setTrayMenu([
         await MenuItemShow(t('tray.show')),
         await MenuItemExit(t('tray.exit')),
@@ -414,7 +418,7 @@ const setting_menu_items: Ref<MenuItem[]> = ref([
     label: () => t('mode.autostart'),
     icon: 'pi pi-clock',
     command: openAutostartDialog,
-    visible: () => type() !== 'android',
+    visible: () => !['android', 'ios'].includes(type()),
   },
   {
     label: () => `${t('config-server.title')}${t('config-server.' + configServerConnectionStatus.value)}`,

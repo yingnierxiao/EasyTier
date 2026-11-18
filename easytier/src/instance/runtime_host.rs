@@ -41,6 +41,21 @@ pub(crate) struct NativeInstanceRuntimeHost {
 }
 
 impl NativeInstanceRuntimeHost {
+    #[cfg(all(target_os = "ios", feature = "tun"))]
+    pub(crate) async fn attach_packet_tunnel(&self, fd: i32) -> anyhow::Result<()> {
+        let _operation = self.operation.lock().await;
+        self.tun.attach_fd_checked(fd).await
+    }
+
+    #[cfg(target_os = "ios")]
+    pub(crate) fn packet_tunnel_addresses(&self) -> Vec<String> {
+        self.global_ctx
+            .get_ipv4()
+            .map(|ip| format!("{ip:#}"))
+            .into_iter()
+            .chain(self.global_ctx.get_ipv6().map(|ip| format!("{ip:#}")))
+            .collect()
+    }
     #[cfg(test)]
     pub(crate) fn new(global_ctx: ArcGlobalCtx) -> Arc<Self> {
         Self::new_with_executor(global_ctx, None)

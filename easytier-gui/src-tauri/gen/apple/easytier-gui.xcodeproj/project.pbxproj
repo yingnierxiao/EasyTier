@@ -1,0 +1,687 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0D5F6205452C585F8EBA6156 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5DC7E7975E4800912657A88 /* PacketTunnelProvider.swift */; };
+		0EE64939C8EDCC4341D2666D /* assets in Resources */ = {isa = PBXBuildFile; fileRef = F8162025AD0167E68C8F23CE /* assets */; };
+		0F1DDC4FD4A37CDCFCE1D8BD /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4B9F2D87F05513037C9D3EAE /* Metal.framework */; };
+		1F558A70614A03BF77802FB1 /* libapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 15E99C61CA6185A7E6207C7F /* libapp.a */; };
+		2AA80EBD4D825A16DA277DCB /* TunnelNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = FCEF0288390B4770E45B962A /* TunnelNetwork.swift */; };
+		3D8CBE3EFEF07EDD880BD448 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B55E5EC5EC459A213E756D0 /* Security.framework */; };
+		3EA3E9F529786D9C1A994178 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 51623BD2736477C0C170A5D5 /* SystemConfiguration.framework */; };
+		45D2669DD0A3D2A5B62319ED /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A56E365AAD1F73B4DEBBD9B4 /* QuartzCore.framework */; };
+		472AEA1AD2918314E47793E5 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = B7D34ED6ACC2285D758347F1 /* LaunchScreen.storyboard */; };
+		501C05BC97C89B9E3F5BFBB1 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6FF4DBA97EF964B3BE193F09 /* UIKit.framework */; };
+		5BF78442BB738AA6982061A1 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F996705AECF959A6B41B320F /* Network.framework */; };
+		6C7AE07228E37D8C812DE201 /* PacketTunnel.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 90AAD133498138748E2FE1DD /* PacketTunnel.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8332401F4DB7D1B4C561547F /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B55E5EC5EC459A213E756D0 /* Security.framework */; };
+		880F0E21B85853296E9D9EEC /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C4385C09FFCF84747FD0B09E /* WebKit.framework */; };
+		89D0EB2B46D3E99139C58C4E /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6089BD9B7C2C00CF9EDC85E5 /* MetalKit.framework */; };
+		9B2B045E2EBE82F8FAE60A23 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 46FBFE4F601009A79663CEFB /* NetworkExtension.framework */; };
+		AF7F6FAA6BDA6D7B4714FD2F /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = A144644F0F46268817FAA858 /* main.mm */; };
+		B2A1A2DBAE56234FA8903601 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 51623BD2736477C0C170A5D5 /* SystemConfiguration.framework */; };
+		C38E09D02B05578B2484ED6E /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 46FBFE4F601009A79663CEFB /* NetworkExtension.framework */; };
+		C6CFDEC0020764995D1A064A /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 984433BCEBB91032C11B18D0 /* Assets.xcassets */; };
+		D8B466B18BD3BF25CD8D5009 /* TunnelSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5580307C5B956F65F2821A7B /* TunnelSnapshot.swift */; };
+		E27CED947750A2F8394E8CA9 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0F7B6173D0152EA271DE8986 /* CoreGraphics.framework */; };
+		F6E83D90B80D0B072AB48C83 /* PacketFlowBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA79ACF82C08598A47CBE2B8 /* PacketFlowBridge.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0B8B26EDE323D25F6A1F9A60 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 846D0D1F7244BE7CFF60B506 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8A1138BCD2A9E39337C75D39;
+			remoteInfo = PacketTunnel;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4A59735AF0D35A04127F4F3B /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				6C7AE07228E37D8C812DE201 /* PacketTunnel.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		0B55E5EC5EC459A213E756D0 /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		0D629209B1B8E2DD2F5D7F07 /* macos.rs */ = {isa = PBXFileReference; path = macos.rs; sourceTree = "<group>"; };
+		0F7B6173D0152EA271DE8986 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		13A5F13838AC23BB239027C7 /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
+		15E99C61CA6185A7E6207C7F /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
+		2FAA6AF5407B6DE7FCDD2200 /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
+		306C49CFF6B43DD97DB5787D /* windows.rs */ = {isa = PBXFileReference; path = windows.rs; sourceTree = "<group>"; };
+		437B724D3C0CBCE61DD43727 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
+		46FBFE4F601009A79663CEFB /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = System/Library/Frameworks/NetworkExtension.framework; sourceTree = SDKROOT; };
+		4B9F2D87F05513037C9D3EAE /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		5160B254EF0DF04C870AFB98 /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		51623BD2736477C0C170A5D5 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
+		5580307C5B956F65F2821A7B /* TunnelSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelSnapshot.swift; sourceTree = "<group>"; };
+		6089BD9B7C2C00CF9EDC85E5 /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		6FF4DBA97EF964B3BE193F09 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		72738249FAFDD0E0253987C4 /* ios.rs */ = {isa = PBXFileReference; path = ios.rs; sourceTree = "<group>"; };
+		90AAD133498138748E2FE1DD /* PacketTunnel.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PacketTunnel.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		984433BCEBB91032C11B18D0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		987D02B3F979B927CA44F099 /* easytier-gui_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "easytier-gui_iOS.entitlements"; sourceTree = "<group>"; };
+		9E6A5580658DD1AA712DCCD6 /* EasyTierCore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = EasyTierCore.h; sourceTree = "<group>"; };
+		A144644F0F46268817FAA858 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
+		A56E365AAD1F73B4DEBBD9B4 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		AA79ACF82C08598A47CBE2B8 /* PacketFlowBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketFlowBridge.swift; sourceTree = "<group>"; };
+		ADD175CF043B602E9EACC10D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B7D34ED6ACC2285D758347F1 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		BE14FE153C07500B23B78572 /* PacketTunnel.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PacketTunnel.entitlements; sourceTree = "<group>"; };
+		BF624AFA8FECE645ADB6C3BC /* easytier-gui_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "easytier-gui_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		C4385C09FFCF84747FD0B09E /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		C5DC7E7975E4800912657A88 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
+		CE74C97D09928DE5C970BC79 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		F5AB33D2F838B6A67E1B8325 /* linux.rs */ = {isa = PBXFileReference; path = linux.rs; sourceTree = "<group>"; };
+		F8162025AD0167E68C8F23CE /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
+		F996705AECF959A6B41B320F /* Network.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Network.framework; path = System/Library/Frameworks/Network.framework; sourceTree = SDKROOT; };
+		FCEF0288390B4770E45B962A /* TunnelNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TunnelNetwork.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		2A6948741E944F3693CFBC06 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C38E09D02B05578B2484ED6E /* NetworkExtension.framework in Frameworks */,
+				5BF78442BB738AA6982061A1 /* Network.framework in Frameworks */,
+				8332401F4DB7D1B4C561547F /* Security.framework in Frameworks */,
+				3EA3E9F529786D9C1A994178 /* SystemConfiguration.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E20E103CF16C1B0A0D702E06 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1F558A70614A03BF77802FB1 /* libapp.a in Frameworks */,
+				9B2B045E2EBE82F8FAE60A23 /* NetworkExtension.framework in Frameworks */,
+				E27CED947750A2F8394E8CA9 /* CoreGraphics.framework in Frameworks */,
+				0F1DDC4FD4A37CDCFCE1D8BD /* Metal.framework in Frameworks */,
+				89D0EB2B46D3E99139C58C4E /* MetalKit.framework in Frameworks */,
+				45D2669DD0A3D2A5B62319ED /* QuartzCore.framework in Frameworks */,
+				3D8CBE3EFEF07EDD880BD448 /* Security.framework in Frameworks */,
+				B2A1A2DBAE56234FA8903601 /* SystemConfiguration.framework in Frameworks */,
+				501C05BC97C89B9E3F5BFBB1 /* UIKit.framework in Frameworks */,
+				880F0E21B85853296E9D9EEC /* WebKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		08D8BD4CD553845AE2569BF3 = {
+			isa = PBXGroup;
+			children = (
+				F8162025AD0167E68C8F23CE /* assets */,
+				984433BCEBB91032C11B18D0 /* Assets.xcassets */,
+				B7D34ED6ACC2285D758347F1 /* LaunchScreen.storyboard */,
+				F175B31D3C3471B684F95EB9 /* easytier-gui_iOS */,
+				81B0E90CA1CE882E905FBFF4 /* PacketTunnel */,
+				EFD1FAB40FF1985B5E613286 /* Sources */,
+				ABA55EE62BA0F8A7BDD7C9B0 /* src */,
+				F158F435EE37204AC40867CA /* Frameworks */,
+				8FD35CCB3697764027D174FE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		31971A764E47EDAA0551CB8A /* elevate */ = {
+			isa = PBXGroup;
+			children = (
+				F5AB33D2F838B6A67E1B8325 /* linux.rs */,
+				0D629209B1B8E2DD2F5D7F07 /* macos.rs */,
+				5160B254EF0DF04C870AFB98 /* mod.rs */,
+				306C49CFF6B43DD97DB5787D /* windows.rs */,
+			);
+			path = elevate;
+			sourceTree = "<group>";
+		};
+		5D8D22D8E4A7AA6FCE479D65 /* bindings */ = {
+			isa = PBXGroup;
+			children = (
+				437B724D3C0CBCE61DD43727 /* bindings.h */,
+			);
+			path = bindings;
+			sourceTree = "<group>";
+		};
+		81B0E90CA1CE882E905FBFF4 /* PacketTunnel */ = {
+			isa = PBXGroup;
+			children = (
+				9E6A5580658DD1AA712DCCD6 /* EasyTierCore.h */,
+				CE74C97D09928DE5C970BC79 /* Info.plist */,
+				AA79ACF82C08598A47CBE2B8 /* PacketFlowBridge.swift */,
+				BE14FE153C07500B23B78572 /* PacketTunnel.entitlements */,
+				C5DC7E7975E4800912657A88 /* PacketTunnelProvider.swift */,
+				FCEF0288390B4770E45B962A /* TunnelNetwork.swift */,
+				5580307C5B956F65F2821A7B /* TunnelSnapshot.swift */,
+			);
+			path = PacketTunnel;
+			sourceTree = "<group>";
+		};
+		8FD35CCB3697764027D174FE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BF624AFA8FECE645ADB6C3BC /* easytier-gui_iOS.app */,
+				90AAD133498138748E2FE1DD /* PacketTunnel.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		ABA55EE62BA0F8A7BDD7C9B0 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				72738249FAFDD0E0253987C4 /* ios.rs */,
+				13A5F13838AC23BB239027C7 /* lib.rs */,
+				2FAA6AF5407B6DE7FCDD2200 /* main.rs */,
+				31971A764E47EDAA0551CB8A /* elevate */,
+			);
+			name = src;
+			path = ../../src;
+			sourceTree = "<group>";
+		};
+		E64CBF26F4E24287D9DEDBEC /* easytier-gui */ = {
+			isa = PBXGroup;
+			children = (
+				A144644F0F46268817FAA858 /* main.mm */,
+				5D8D22D8E4A7AA6FCE479D65 /* bindings */,
+			);
+			path = "easytier-gui";
+			sourceTree = "<group>";
+		};
+		EFD1FAB40FF1985B5E613286 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				E64CBF26F4E24287D9DEDBEC /* easytier-gui */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		F158F435EE37204AC40867CA /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				0F7B6173D0152EA271DE8986 /* CoreGraphics.framework */,
+				15E99C61CA6185A7E6207C7F /* libapp.a */,
+				4B9F2D87F05513037C9D3EAE /* Metal.framework */,
+				6089BD9B7C2C00CF9EDC85E5 /* MetalKit.framework */,
+				F996705AECF959A6B41B320F /* Network.framework */,
+				46FBFE4F601009A79663CEFB /* NetworkExtension.framework */,
+				A56E365AAD1F73B4DEBBD9B4 /* QuartzCore.framework */,
+				0B55E5EC5EC459A213E756D0 /* Security.framework */,
+				51623BD2736477C0C170A5D5 /* SystemConfiguration.framework */,
+				6FF4DBA97EF964B3BE193F09 /* UIKit.framework */,
+				C4385C09FFCF84747FD0B09E /* WebKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		F175B31D3C3471B684F95EB9 /* easytier-gui_iOS */ = {
+			isa = PBXGroup;
+			children = (
+				987D02B3F979B927CA44F099 /* easytier-gui_iOS.entitlements */,
+				ADD175CF043B602E9EACC10D /* Info.plist */,
+			);
+			path = "easytier-gui_iOS";
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		37B2445B22F3D4ABC1C38E2B /* easytier-gui_iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BAC4E9428D935FB6DEF1BCBD /* Build configuration list for PBXNativeTarget "easytier-gui_iOS" */;
+			buildPhases = (
+				70074C86EECEE9CFCAD4B8A7 /* Build Rust Code */,
+				A0164E74D106D26DC556ED60 /* Sources */,
+				A4A6C9228BD0233F9A881A6E /* Resources */,
+				E20E103CF16C1B0A0D702E06 /* Frameworks */,
+				4A59735AF0D35A04127F4F3B /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				342C5F89FC060A7F17A86C4E /* PBXTargetDependency */,
+			);
+			name = "easytier-gui_iOS";
+			packageProductDependencies = (
+			);
+			productName = "easytier-gui_iOS";
+			productReference = BF624AFA8FECE645ADB6C3BC /* easytier-gui_iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		8A1138BCD2A9E39337C75D39 /* PacketTunnel */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4EA98FDE87166648FCE43BF0 /* Build configuration list for PBXNativeTarget "PacketTunnel" */;
+			buildPhases = (
+				F15A346C0A8BBB821525ED97 /* Build EasyTier Packet Tunnel Core */,
+				F8E2368DA1D23B5827F8DD39 /* Sources */,
+				2A6948741E944F3693CFBC06 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PacketTunnel;
+			packageProductDependencies = (
+			);
+			productName = PacketTunnel;
+			productReference = 90AAD133498138748E2FE1DD /* PacketTunnel.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		846D0D1F7244BE7CFF60B506 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					37B2445B22F3D4ABC1C38E2B = {
+						DevelopmentTeam = RWAXP5Y679;
+					};
+					8A1138BCD2A9E39337C75D39 = {
+						DevelopmentTeam = RWAXP5Y679;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = D3B414229C204085EF39F455 /* Build configuration list for PBXProject "easytier-gui" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 08D8BD4CD553845AE2569BF3;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8FD35CCB3697764027D174FE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				37B2445B22F3D4ABC1C38E2B /* easytier-gui_iOS */,
+				8A1138BCD2A9E39337C75D39 /* PacketTunnel */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A4A6C9228BD0233F9A881A6E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C6CFDEC0020764995D1A064A /* Assets.xcassets in Resources */,
+				472AEA1AD2918314E47793E5 /* LaunchScreen.storyboard in Resources */,
+				0EE64939C8EDCC4341D2666D /* assets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		70074C86EECEE9CFCAD4B8A7 /* Build Rust Code */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Rust Code";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Externals/x86_64/${CONFIGURATION}/libapp.a",
+				"$(SRCROOT)/Externals/arm64/${CONFIGURATION}/libapp.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "node \"${PROJECT_DIR}/../../../node_modules/@tauri-apps/cli/tauri.js\" ios xcode-script -v --platform ${PLATFORM_DISPLAY_NAME:?} --sdk-root ${SDKROOT:?} --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration ${CONFIGURATION:?} ${FORCE_COLOR} ${ARCHS:?}";
+		};
+		F15A346C0A8BBB821525ED97 /* Build EasyTier Packet Tunnel Core */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build EasyTier Packet Tunnel Core";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(PROJECT_DIR)/Externals/packet-tunnel/$(PLATFORM_NAME)/libeasytier_ios.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "bash \"$PROJECT_DIR/../../../../script/build-ios-packet-tunnel.sh\"";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A0164E74D106D26DC556ED60 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AF7F6FAA6BDA6D7B4714FD2F /* main.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F8E2368DA1D23B5827F8DD39 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F6E83D90B80D0B072AB48C83 /* PacketFlowBridge.swift in Sources */,
+				0D5F6205452C585F8EBA6156 /* PacketTunnelProvider.swift in Sources */,
+				2AA80EBD4D825A16DA277DCB /* TunnelNetwork.swift in Sources */,
+				D8B466B18BD3BF25CD8D5009 /* TunnelSnapshot.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		342C5F89FC060A7F17A86C4E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8A1138BCD2A9E39337C75D39 /* PacketTunnel */;
+			targetProxy = 0B8B26EDE323D25F6A1F9A60 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		219E3D925C33975DA8FB67BF /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "easytier-gui_iOS/easytier-gui_iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = "RWAXP5Y679";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = "easytier-gui_iOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yingnierxiao.easytier;
+				PRODUCT_NAME = "easytier-gui";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = debug;
+		};
+		234F509B5E64FDDED8B98EFF /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ARCHS = (
+					arm64,
+				);
+				CODE_SIGN_ENTITLEMENTS = PacketTunnel/PacketTunnel.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = RWAXP5Y679;
+				ENABLE_BITCODE = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = PacketTunnel/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = "$(inherited) $(PROJECT_DIR)/Externals/packet-tunnel/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME)";
+				OTHER_LDFLAGS = "$(inherited) -leasytier_ios -lresolv -liconv";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yingnierxiao.easytier.PacketTunnel;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = PacketTunnel/EasyTierCore.h;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = debug;
+		};
+		A4BBB3CB41A0352B4305B69E /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = release;
+		};
+		B6FEB904984777499FFF9673 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "easytier-gui_iOS/easytier-gui_iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = "RWAXP5Y679";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = "easytier-gui_iOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yingnierxiao.easytier;
+				PRODUCT_NAME = "easytier-gui";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = release;
+		};
+		DB96B7A58A238AB7D09B82FE /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = debug;
+		};
+		EBC8A09ABC6F9EC3D60E71AD /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				ARCHS = (
+					arm64,
+				);
+				CODE_SIGN_ENTITLEMENTS = PacketTunnel/PacketTunnel.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = RWAXP5Y679;
+				ENABLE_BITCODE = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				INFOPLIST_FILE = PacketTunnel/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = "$(inherited) $(PROJECT_DIR)/Externals/packet-tunnel/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME)";
+				OTHER_LDFLAGS = "$(inherited) -leasytier_ios -lresolv -liconv";
+				PRODUCT_BUNDLE_IDENTIFIER = com.yingnierxiao.easytier.PacketTunnel;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = PacketTunnel/EasyTierCore.h;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4EA98FDE87166648FCE43BF0 /* Build configuration list for PBXNativeTarget "PacketTunnel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				234F509B5E64FDDED8B98EFF /* debug */,
+				EBC8A09ABC6F9EC3D60E71AD /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		BAC4E9428D935FB6DEF1BCBD /* Build configuration list for PBXNativeTarget "easytier-gui_iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				219E3D925C33975DA8FB67BF /* debug */,
+				B6FEB904984777499FFF9673 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		D3B414229C204085EF39F455 /* Build configuration list for PBXProject "easytier-gui" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DB96B7A58A238AB7D09B82FE /* debug */,
+				A4BBB3CB41A0352B4305B69E /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 846D0D1F7244BE7CFF60B506 /* Project object */;
+}

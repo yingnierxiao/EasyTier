@@ -17,6 +17,9 @@ use super::{
     runtime_executor::NativeInstanceExecutor, runtime_host::NativeInstanceRuntimeHost,
 };
 
+#[cfg(target_os = "ios")]
+pub mod packet_tunnel;
+
 pub type NativeCoreInstance = CoreInstance<NativeInstanceHost>;
 #[cfg(feature = "management-rpc")]
 pub type NativeInstanceManager = InstanceManager<NativeInstanceFactory>;

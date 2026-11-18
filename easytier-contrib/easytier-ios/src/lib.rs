@@ -6,11 +6,20 @@
 //! a TUN device or NEPacketTunnel. Loopback port forwarding into the
 //! virtual network is configured through `api.config.ConfigRpcService/PatchConfig`
 //! port-forward patches; there is no forwarder in this crate. It builds as
-//! a static library for the Apple toolchain; `easytier-ios.h` declares the
+//! a static library for the Apple toolchain. The separate packet_tunnel APIs
+//! run the native core inside NEPacketTunnelProvider; the legacy APIs above
+//! keep their original no-TUN behavior. `easytier-ios.h` declares the
 //! callable surface.
 //!
 //! All exported functions are panic-safe: panics are caught at the FFI
 //! boundary and reported through `easytier_ios_last_error`.
+
+#[cfg(target_os = "ios")]
+mod packet_tunnel_abi;
+#[cfg(any(target_os = "ios", test))]
+mod packet_tunnel_hooks;
+#[cfg(any(target_os = "ios", test))]
+mod packet_tunnel_runtime;
 
 mod diagnostic_logging;
 mod error;

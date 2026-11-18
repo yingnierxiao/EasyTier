@@ -21,3 +21,6 @@ ignored = [
     # Called by build.rs to generate plugin permissions and bindings.
     "tauri-plugin",
 ]
+
+[target.'cfg(target_os = "ios")'.dependencies]
+serde_json.workspace = true

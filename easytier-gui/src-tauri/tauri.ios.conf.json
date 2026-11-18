@@ -1,0 +1,8 @@
+{
+  "identifier": "com.yingnierxiao.easytier",
+  "bundle": {
+    "iOS": {
+      "minimumSystemVersion": "15.0"
+    }
+  }
+}

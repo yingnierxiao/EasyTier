@@ -1,6 +1,7 @@
 import { Menu, MenuItem, PredefinedMenuItem } from '@tauri-apps/api/menu'
 import { TrayIcon } from '@tauri-apps/api/tray'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { type } from '@tauri-apps/plugin-os'
 import pkg from '~/../package.json'
 
 const DEFAULT_TRAY_NAME = 'main'
@@ -16,6 +17,8 @@ async function toggleVisibility() {
 }
 
 export async function useTray(init: boolean = false) {
+  if (type() === 'android' || type() === 'ios')
+    return null
   let tray
   try {
     tray = await TrayIcon.getById(DEFAULT_TRAY_NAME)

@@ -2,8 +2,9 @@
  * @file easytier-ios.h
  * @brief iOS-facing C ABI for EasyTier.
  *
- * This library embeds EasyTier into an iOS app without a TUN device or
- * NEPacketTunnel: it manages EasyTier instances and bridges to the EasyTier
+ * The legacy instance APIs embed EasyTier without a TUN device.
+ * The packet_tunnel APIs run a separate core inside NEPacketTunnelProvider.
+ * The legacy APIs manage EasyTier instances and bridge to the EasyTier
  * management RPC surface. Loopback port forwarding into the virtual network
  * is configured through easytier_ios_call_json_rpc() with
  * api.config.ConfigRpcService/PatchConfig port-forward patches; there is no
@@ -150,6 +151,14 @@ char *easytier_ios_last_error(void);
  * @param s NULL, or a string previously returned by this library.
  */
 void easytier_ios_free_string(char *s);
+
+/** Packet Tunnel 扩展入口；JSON 返回值使用 easytier_ios_free_string 释放。 */
+#if defined(__APPLE__)
+char *easytier_ios_packet_tunnel_start(const char *directory);
+char *easytier_ios_packet_tunnel_snapshot(int32_t fd);
+char *easytier_ios_packet_tunnel_web(const char *url);
+int32_t easytier_ios_packet_tunnel_stop(void);
+#endif
 
 #ifdef __cplusplus
 }

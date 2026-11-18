@@ -12,6 +12,11 @@ mod mobile;
 #[cfg(mobile)]
 use mobile::Vpnservice;
 
+#[cfg(target_os = "ios")]
+mod ios_core_endpoint;
+#[cfg(target_os = "ios")]
+pub use ios_core_endpoint::IosCoreEndpoint;
+
 mod error;
 mod models;
 

@@ -2,6 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod elevate;
+#[cfg(target_os = "ios")]
+mod ios;
 
 use anyhow::Context;
 #[cfg(target_os = "android")]
@@ -18,7 +20,9 @@ use easytier::proto::api::manage::{
     WebClientServiceClientFactory,
 };
 use easytier::proto::rpc_types::controller::BaseController;
-use easytier::web_client::{self, WebClient};
+#[cfg(not(target_os = "ios"))]
+use easytier::web_client;
+use easytier::web_client::WebClient;
 use easytier::{
     common::config::{NetworkConfig, NetworkConfigExt},
     common::{
@@ -30,6 +34,7 @@ use easytier::{
     rpc_service::ApiRpcServer,
     utils::panic::setup_panic_handler,
 };
+#[cfg(not(target_os = "ios"))]
 use easytier_core::management::config_source_to_rpc;
 use easytier_core::management::remote_client::{
     GetNetworkMetasResponse, ListNetworkInstanceIdsJsonResp, ListNetworkProps, RemoteClientManager,
@@ -46,7 +51,7 @@ use uuid::Uuid;
 
 use tauri::{AppHandle, Emitter, Manager as _};
 
-#[cfg(not(target_os = "android"))]
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 
 static INSTANCE_MANAGER: once_cell::sync::Lazy<RwLock<Option<Arc<NativeInstanceManager>>>> =
@@ -384,13 +389,13 @@ async fn get_network_metas(
         .map_err(|e| e.to_string())
 }
 
-#[cfg(target_os = "android")]
+#[cfg(any(target_os = "android", target_os = "ios"))]
 #[tauri::command]
 fn init_service() -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(not(target_os = "android"))]
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 #[tauri::command]
 fn init_service(opts: Option<service::ServiceOptions>) -> Result<(), String> {
     match opts {
@@ -419,7 +424,7 @@ fn init_service(opts: Option<service::ServiceOptions>) -> Result<(), String> {
 
 #[tauri::command]
 fn set_service_status(_enable: bool) -> Result<(), String> {
-    #[cfg(not(target_os = "android"))]
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
         service::set_status(_enable).map_err(|e| format!("{:#}", e))?;
     }
@@ -428,7 +433,7 @@ fn set_service_status(_enable: bool) -> Result<(), String> {
 
 #[tauri::command]
 fn get_service_status() -> Result<&'static str, String> {
-    #[cfg(not(target_os = "android"))]
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
         use easytier::service_manager::ServiceStatus;
         let status = service::status().map_err(|e| format!("{:#}", e))?;
@@ -438,7 +443,7 @@ fn get_service_status() -> Result<&'static str, String> {
             ServiceStatus::Running => Ok("Running"),
         }
     }
-    #[cfg(target_os = "android")]
+    #[cfg(any(target_os = "android", target_os = "ios"))]
     {
         Ok("NotInstalled")
     }
@@ -478,6 +483,14 @@ async fn init_rpc_connection(
     is_normal_mode: bool,
     url: Option<String>,
 ) -> Result<(), String> {
+    #[cfg(target_os = "ios")]
+    if is_normal_mode {
+        // iOS 核心属于扩展进程，界面只持有经过认证的管理连接。
+        let tunnel = ios::connect(_app).await.map_err(|e| format!("{e:#}"))?;
+        let client = manager::GUIClientManager::from_tunnel(tunnel);
+        *CLIENT_MANAGER.write().await = Some(client);
+        return Ok(());
+    }
     let mut client_manager_guard =
         tokio::time::timeout(std::time::Duration::from_secs(5), CLIENT_MANAGER.write())
             .await
@@ -581,6 +594,7 @@ async fn is_client_running() -> Result<bool, String> {
     Ok(get_client_manager!()?.rpc_manager.is_running())
 }
 
+#[cfg(not(target_os = "ios"))]
 #[tauri::command]
 async fn init_web_client(app: AppHandle, url: Option<String>) -> Result<(), String> {
     let mut web_client_guard = WEB_CLIENT.write().await;
@@ -619,6 +633,7 @@ async fn init_web_client(app: AppHandle, url: Option<String>) -> Result<(), Stri
     Ok(())
 }
 
+#[cfg(not(target_os = "ios"))]
 #[tauri::command]
 async fn is_web_client_connected() -> Result<bool, String> {
     let web_client_guard = WEB_CLIENT.read().await;
@@ -627,6 +642,23 @@ async fn is_web_client_connected() -> Result<bool, String> {
     } else {
         Ok(false)
     }
+}
+
+#[cfg(target_os = "ios")]
+#[tauri::command]
+async fn init_web_client(app: AppHandle, url: Option<String>) -> Result<(), String> {
+    ios::command(app, "web", Some(url.unwrap_or_default())).await?;
+    Ok(())
+}
+
+#[cfg(target_os = "ios")]
+#[tauri::command]
+async fn is_web_client_connected(app: AppHandle) -> Result<bool, String> {
+    Ok(ios::command(app, "webStatus", None)
+        .await?
+        .get("connected")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false))
 }
 
 // 获取日志目录的辅助函数
@@ -651,7 +683,7 @@ async fn get_log_dir_path(app: tauri::AppHandle) -> Result<String, String> {
     }
 }
 
-#[cfg(not(target_os = "android"))]
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 fn toggle_window_visibility(app: &tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let visible = window.is_visible().unwrap_or_default();
@@ -677,6 +709,7 @@ fn toggle_window_visibility(app: &tauri::AppHandle) {
     }
 }
 
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 fn get_exe_path() -> String {
     if let Ok(appimage_path) = std::env::var("APPIMAGE")
         && !appimage_path.is_empty()
@@ -688,7 +721,7 @@ fn get_exe_path() -> String {
         .unwrap_or_default()
 }
 
-#[cfg(not(target_os = "android"))]
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 fn check_sudo() -> bool {
     let is_elevated = elevate::Command::is_elevated();
     if !is_elevated {
@@ -707,16 +740,20 @@ mod manager {
     use dashmap::{DashMap, DashSet};
     use easytier::common::config::{NetworkConfig, NetworkConfigExt};
     use easytier::proto::api::logger::{LoggerRpc, LoggerRpcClientFactory, SetLoggerConfigRequest};
+    #[cfg(not(target_os = "ios"))]
     use easytier::proto::api::manage::RunNetworkInstanceRequest;
     use easytier::proto::rpc::bidirect::BidirectRpcManager;
     use easytier::proto::rpc_types::controller::BaseController;
+    #[cfg(not(target_os = "ios"))]
     use easytier::web_client::WebClientHooks;
     use easytier_core::management::remote_client::PersistentConfig;
 
+    #[cfg(not(target_os = "ios"))]
     pub(super) struct GuiHooks {
         pub(super) app: AppHandle,
     }
 
+    #[cfg(not(target_os = "ios"))]
     #[async_trait]
     impl WebClientHooks for GuiHooks {
         async fn pre_run_network_instance(
@@ -784,7 +821,7 @@ mod manager {
             }
         }
 
-        #[cfg(any(test, target_os = "android"))]
+        #[cfg(any(test, target_os = "android", target_os = "ios"))]
         fn is_web_like(self) -> bool {
             matches!(self, Self::Web)
         }
@@ -989,14 +1026,18 @@ mod manager {
                     .connect_ring_tunnel(*RPC_RING_UUID.deref())?
             };
 
+            Ok(Self::from_tunnel(tunnel))
+        }
+
+        pub fn from_tunnel(tunnel: Box<dyn Tunnel>) -> Self {
             let rpc_manager = BidirectRpcManager::new();
             rpc_manager.run_with_tunnel(tunnel);
 
-            Ok(Self {
+            Self {
                 storage: GUIStorage::new(),
                 rpc_manager,
                 config_mutation: Mutex::new(()),
-            })
+            }
         }
 
         pub fn get_enabled_instances_with_tun_ids(&self) -> impl Iterator<Item = uuid::Uuid> + '_ {
@@ -1008,7 +1049,7 @@ mod manager {
                 .filter_map(|c| c.config.instance_id().parse::<uuid::Uuid>().ok())
         }
 
-        #[cfg(target_os = "android")]
+        #[cfg(any(target_os = "android", target_os = "ios"))]
         pub fn get_enabled_instances_with_web_like_tun_ids(
             &self,
         ) -> impl Iterator<Item = uuid::Uuid> + '_ {
@@ -1021,7 +1062,7 @@ mod manager {
                 .filter_map(|c| c.config.instance_id().parse::<uuid::Uuid>().ok())
         }
 
-        #[cfg(target_os = "android")]
+        #[cfg(any(target_os = "android", target_os = "ios"))]
         pub(super) async fn disable_instances_with_tun(
             &self,
             app: &AppHandle,
@@ -1059,7 +1100,7 @@ mod manager {
             app.emit("pre_run_network_instance", instance_id.to_string())
                 .map_err(|e| e.to_string())?;
 
-            #[cfg(target_os = "android")]
+            #[cfg(any(target_os = "android", target_os = "ios"))]
             if !cfg.get_flags().no_tun {
                 match source {
                     PersistedConfigSource::User | PersistedConfigSource::Legacy => {
@@ -1073,7 +1114,7 @@ mod manager {
                             .map_err(|e| e.to_string())?;
                         if self.get_enabled_instances_with_tun_ids().next().is_some() {
                             return Err(
-                                "Android only supports one active TUN network; user-managed VPN remains active"
+                                "Mobile clients only support one active TUN network; user-managed VPN remains active"
                                     .to_string(),
                             );
                         }
@@ -1138,6 +1179,7 @@ mod manager {
             Ok(())
         }
 
+        #[cfg(not(target_os = "ios"))]
         pub(super) async fn post_remote_remove_network_instances_hook(
             &self,
             app: &AppHandle,
@@ -1203,6 +1245,39 @@ mod manager {
             let client = self
                 .get_rpc_client(app.clone())
                 .ok_or_else(|| anyhow::anyhow!("RPC client not found"))?;
+            #[cfg(target_os = "ios")]
+            {
+                // 重开界面时由扩展恢复真实状态，不能重复启动或覆盖仍在运行的网络。
+                let running = client
+                    .list_network_instance(
+                        BaseController::default(),
+                        easytier::proto::api::manage::ListNetworkInstanceRequest::default(),
+                    )
+                    .await?;
+                for id in running.inst_ids {
+                    let response = client
+                        .get_network_instance_config(
+                            BaseController::default(),
+                            easytier::proto::api::manage::GetNetworkInstanceConfigRequest {
+                                inst_id: Some(id),
+                            },
+                        )
+                        .await?;
+                    if let Some(config) = response.config {
+                        let uuid = config.instance_id().parse::<Uuid>()?;
+                        let source = PersistedConfigSource::from_runtime_source(
+                            easytier_core::management::config_source_from_rpc(response.source)
+                                .unwrap_or(ConfigSource::User),
+                        );
+                        self.storage
+                            .save_config(&app, uuid, config, source)
+                            .map_err(anyhow::Error::msg)?;
+                        self.storage.enabled_networks.insert(uuid);
+                    }
+                }
+                let _ = enabled_networks;
+            }
+            #[cfg(not(target_os = "ios"))]
             for id in enabled_networks {
                 if let Ok(uuid) = id.parse()
                     && !self.storage.enabled_networks.contains(&uuid)
@@ -1329,7 +1404,7 @@ mod manager {
     }
 }
 
-#[cfg(not(target_os = "android"))]
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 mod service {
     use anyhow::Context;
 
@@ -1436,7 +1511,7 @@ mod service {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run_gui() -> std::process::ExitCode {
-    #[cfg(not(target_os = "android"))]
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     if !check_sudo() {
         use std::process;
         process::exit(0);
@@ -1486,7 +1561,7 @@ pub fn run_gui() -> std::process::ExitCode {
             };
 
             // for tray icon, menu need to be built in js
-            #[cfg(not(target_os = "android"))]
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             let _tray_menu = TrayIconBuilder::with_id("main")
                 .show_menu_on_left_click(false)
                 .on_tray_icon_event(|tray, event| {
@@ -1537,7 +1612,7 @@ pub fn run_gui() -> std::process::ExitCode {
             get_log_dir_path,
         ])
         .on_window_event(|_win, event| match event {
-            #[cfg(not(target_os = "android"))]
+            #[cfg(not(any(target_os = "android", target_os = "ios")))]
             tauri::WindowEvent::CloseRequested { api, .. } => {
                 let _ = _win.hide();
                 let _ = set_dock_visibility(_win.app_handle().clone(), false);

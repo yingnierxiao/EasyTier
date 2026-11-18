@@ -2757,9 +2757,15 @@ dependencies = [
 name = "easytier-ios"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "async-trait",
+ "easytier",
  "easytier-core",
  "easytier-ffi",
+ "rand 0.8.8",
+ "serde",
  "serde_json",
+ "tokio",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -9782,6 +9788,7 @@ name = "tauri-plugin-vpnservice"
 version = "0.0.0"
 dependencies = [
  "serde",
+ "serde_json",
  "tauri",
  "tauri-plugin",
  "thiserror 2.0.20",

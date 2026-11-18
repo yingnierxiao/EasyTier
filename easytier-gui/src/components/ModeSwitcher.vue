@@ -4,6 +4,7 @@ import type { Mode, ServiceMode, RemoteMode, NormalMode } from '~/composables/mo
 import { appConfigDir, appLogDir } from '@tauri-apps/api/path';
 import { join } from '@tauri-apps/api/path';
 import { getServiceStatus, type ServiceStatus } from '~/composables/backend';
+import { type } from '@tauri-apps/plugin-os';
 
 const { t } = useI18n()
 
@@ -38,7 +39,7 @@ onMounted(async () => {
 
 const modeOptions = computed(() => [
   { label: t('mode.normal'), value: 'normal' },
-  { label: t('mode.service'), value: 'service' },
+  ...(['android', 'ios'].includes(type()) ? [] : [{ label: t('mode.service'), value: 'service' }]),
   { label: t('mode.remote'), value: 'remote' },
 ]);
 

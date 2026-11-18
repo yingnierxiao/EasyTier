@@ -28,6 +28,27 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
 pub struct Vpnservice<R: Runtime>(PluginHandle<R>);
 
 impl<R: Runtime> Vpnservice<R> {
+    #[cfg(target_os = "ios")]
+    pub fn connect_ios_core(&self) -> crate::Result<crate::IosCoreEndpoint> {
+        self.0
+            .run_mobile_plugin("connectCore", VoidRequest {})
+            .map_err(Into::into)
+    }
+
+    #[cfg(target_os = "ios")]
+    pub fn ios_core_command(
+        &self,
+        command: &str,
+        url: Option<String>,
+    ) -> crate::Result<serde_json::Value> {
+        self.0
+            .run_mobile_plugin(
+                "coreCommand",
+                serde_json::json!({"command":command,"url":url}),
+            )
+            .map_err(Into::into)
+    }
+
     pub fn ping(&self, payload: PingRequest) -> crate::Result<PingResponse> {
         self.0
             .run_mobile_plugin("ping", payload)

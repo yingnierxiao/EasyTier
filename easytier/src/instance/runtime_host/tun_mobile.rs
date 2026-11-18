@@ -8,7 +8,7 @@ use easytier_core::{
     instance::CorePacketPlane,
 };
 use futures::FutureExt as _;
-use tokio::sync::{Mutex, Notify, mpsc};
+use tokio::sync::{Mutex, Notify, mpsc, oneshot};
 use tokio_util::sync::CancellationToken;
 
 use super::{MagicDnsRuntime, tun_common::TunNicState};
@@ -21,8 +21,9 @@ pub(super) struct NativeTunRuntime {
     global_ctx: ArcGlobalCtx,
     cancel: CancellationToken,
     nic: TunNicState,
-    tun_fd: mpsc::Sender<i32>,
-    tun_fd_receiver: Mutex<Option<mpsc::Receiver<i32>>>,
+    tun_fd: mpsc::Sender<(i32, Option<oneshot::Sender<Result<(), String>>>)>,
+    tun_fd_receiver:
+        Mutex<Option<mpsc::Receiver<(i32, Option<oneshot::Sender<Result<(), String>>>)>>>,
     task: Mutex<Option<tokio::task::JoinHandle<()>>>,
 }
 
@@ -82,18 +83,22 @@ impl NativeTunRuntime {
         let cancel = self.cancel.clone();
         self.task.lock().await.replace(tokio::spawn(async move {
             loop {
-                let fd = tokio::select! {
+                let (fd, completion) = tokio::select! {
                     _ = cancel.cancelled() => return,
                     fd = tun_fds.recv() => match fd { Some(fd) => fd, None => return },
                 };
-                if let Err(error) = Self::install_mobile_tun(
+                let result = Self::install_mobile_tun(
                     nic_state.clone(),
                     global_ctx.clone(),
                     packet_plane.clone(),
                     fd,
                 )
-                .await
-                {
+                .await;
+                if let Some(completion) = completion {
+                    let _ =
+                        completion.send(result.as_ref().map(|_| ()).map_err(|e| format!("{e:#}")));
+                }
+                if let Err(error) = result {
                     tracing::error!(?error, "failed to attach mobile TUN fd");
                 }
             }
@@ -110,8 +115,18 @@ impl NativeTunRuntime {
 
     pub(super) fn attach_fd(&self, fd: i32) -> anyhow::Result<()> {
         self.tun_fd
-            .try_send(fd)
+            .try_send((fd, None))
             .map_err(|error| anyhow::anyhow!("failed to send TUN fd: {error}"))
+    }
+
+    #[cfg(target_os = "ios")]
+    pub(super) async fn attach_fd_checked(&self, fd: i32) -> anyhow::Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tun_fd.send((fd, Some(tx))).await?;
+        // 必须等待网卡真正安装完成，不能把队列接收成功当成隧道就绪。
+        tokio::time::timeout(std::time::Duration::from_secs(5), rx)
+            .await??
+            .map_err(anyhow::Error::msg)
     }
 
     pub(super) fn dhcp_host(

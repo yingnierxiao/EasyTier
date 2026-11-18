@@ -74,7 +74,9 @@ async function onPostRunNetworkInstance(event: Event<unknown>) {
 
 async function onVpnServiceStop(event: Event<unknown>) {
     console.log(`Received event '${EVENTS.VPN_SERVICE_STOP}', raw payload:`, event.payload)
-    await syncMobileVpnService();
+    if (type() === 'android') {
+        await syncMobileVpnService();
+    }
 }
 
 async function onDhcpIpChanged(event: Event<unknown>) {
