@@ -556,7 +556,8 @@ mod tests {
         );
         listener.listen().await.unwrap();
 
-        let receiver = UdpSocket::bind("[::]:0").await.unwrap();
+        // 使用明确的回环目标；通配地址不能代表对端，否则会触发物理出口选择。
+        let receiver = UdpSocket::bind("[::1]:0").await.unwrap();
         let runtime = native_host_runtime();
         send_v6_hole_punch_control_packet(
             runtime.as_ref(),

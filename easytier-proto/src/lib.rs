@@ -36,3 +36,6 @@ pub const ALL_DESCRIPTOR_BYTES: &[u8] =
 pub mod proto {
     pub use crate::*;
 }
+
+#[cfg(all(test, feature = "api"))]
+mod upstream_compat_tests;
