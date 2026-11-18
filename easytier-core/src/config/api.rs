@@ -14,9 +14,15 @@ use super::{
 pub fn network_config_from_toml(config: &TomlConfig) -> NetworkConfig {
     let default_config = TomlConfig::default();
     let mut result = NetworkConfig {
+        dns: config.get_dns(),
         instance_id: Some(config.get_id().to_string()),
         dhcp: Some(config.get_dhcp()),
         dhcp_ipv4_cidr: config.get_dhcp_config().cidr().map(|cidr| cidr.to_string()),
+        dhcpv6: Some(config.get_dhcpv6()),
+        dhcp_ipv6_cidr: config
+            .get_dhcpv6_config()
+            .cidr()
+            .map(|cidr| cidr.to_string()),
         ..Default::default()
     };
 
@@ -102,9 +108,7 @@ pub fn network_config_from_toml(config: &TomlConfig) -> NetworkConfig {
         });
     }
 
-    if let Some(routes) = config.get_routes()
-        && !routes.is_empty()
-    {
+    if let Some(routes) = config.get_routes() {
         result.enable_manual_routes = Some(true);
         result.routes = routes.iter().map(ToString::to_string).collect();
     }

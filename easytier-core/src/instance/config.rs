@@ -94,6 +94,16 @@ impl Default for CoreInstanceHostConfig {
 }
 
 impl CoreInstanceHostConfig {
+    /// Record whether this host can serve the TCP subnet proxy from a user-space TCP stack.
+    ///
+    /// Hosts without an OS TUN device (WASI guests, sandboxes) can only forward proxied TCP
+    /// through such a stack, so they must advertise it for the proxy runtime to pick that path.
+    /// `requires_smoltcp` is sticky: once the host needs the stack it keeps needing it.
+    pub fn set_smoltcp_stack(&mut self, available: bool) {
+        self.smoltcp_available = available;
+        self.requires_smoltcp |= available;
+    }
+
     pub(crate) fn accepts_runtime_url(&self, url: &url::Url) -> bool {
         !self.ignore_unsupported_config
             || self
@@ -183,6 +193,18 @@ impl CoreInstanceConfig {
                     format!("invalid [flags].bind_address: {}", flags.bind_address)
                 })?)
             };
+        if flags.enable_udp_fec {
+            let overhead = crate::packet::FEC_MAX_OVERHEAD as u32
+                + if flags.enable_encryption {
+                    crate::packet::StandardAeadTail::SIZE as u32
+                } else {
+                    0
+                };
+            anyhow::ensure!(
+                flags.mtu.checked_sub(overhead).is_some(),
+                "MTU must be at least {overhead} bytes when UDP FEC is enabled"
+            );
+        }
         let instance_id = config.get_id();
         let identity: crate::config::NetworkIdentity = config.get_network_identity().into();
         let managed_credentials = config.get_managed_credentials();
@@ -220,14 +242,20 @@ impl CoreInstanceConfig {
                     network_name: network_name.clone(),
                 },
                 routes: RouteConfig {
-                    ipv4: config.get_ipv4().map(|value| IpPrefix {
-                        address: value.address().into(),
-                        prefix_len: value.network_length(),
-                    }),
-                    ipv6: config.get_ipv6().map(|value| IpPrefix {
-                        address: value.address().into(),
-                        prefix_len: value.network_length(),
-                    }),
+                    ipv4: config
+                        .get_ipv4()
+                        .filter(|_| !config.get_dhcp())
+                        .map(|value| IpPrefix {
+                            address: value.address().into(),
+                            prefix_len: value.network_length(),
+                        }),
+                    ipv6: config
+                        .get_ipv6()
+                        .filter(|_| !config.get_dhcpv6())
+                        .map(|value| IpPrefix {
+                            address: value.address().into(),
+                            prefix_len: value.network_length(),
+                        }),
                     proxy_networks: proxy_networks
                         .into_iter()
                         .map(|proxy| ProxyNetworkConfig {
@@ -307,6 +335,8 @@ impl CoreInstanceConfig {
             },
             dhcp_ipv4: config.get_dhcp(),
             dhcp_ipv4_cidr: config.get_dhcp_config().cidr(),
+            dhcp_ipv6: config.get_dhcpv6(),
+            dhcp_ipv6_cidr: config.get_dhcpv6_config().cidr(),
             gateway: GatewayRuntimeConfig {
                 socks5_bind,
                 port_forwards: if host.ignore_unsupported_config && !host.gateway_enabled {
@@ -419,6 +449,49 @@ mod tests {
     use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64_STANDARD};
 
     use super::*;
+
+    #[test]
+    fn udp_fec_rejects_mtu_overhead_underflow() {
+        for (encryption, overhead) in [(false, 16), (true, 44)] {
+            let config = TomlConfig::default();
+            let mut flags = config.get_flags();
+            flags.enable_udp_fec = true;
+            flags.enable_encryption = encryption;
+            for mtu in [0, overhead - 1] {
+                flags.mtu = mtu;
+                config.set_flags(flags.clone());
+                assert!(CoreInstanceConfig::from_toml(&config).is_err());
+            }
+            for mtu in [overhead, 1280, 1380] {
+                flags.mtu = mtu;
+                config.set_flags(flags.clone());
+                assert!(CoreInstanceConfig::from_toml(&config).is_ok());
+                assert_eq!(config.get_flags().mtu, mtu);
+            }
+            flags.enable_udp_fec = false;
+            flags.mtu = 0;
+            config.set_flags(flags);
+            assert!(CoreInstanceConfig::from_toml(&config).is_ok());
+        }
+    }
+
+    #[test]
+    fn dhcp_initial_routes_ignore_static_addresses_of_managed_families() {
+        for dhcp_ipv4 in [false, true] {
+            for dhcp_ipv6 in [false, true] {
+                let config =
+                    TomlConfig::new_from_str("ipv4 = '10.20.0.7/24'\nipv6 = 'fd12::7/64'").unwrap();
+                config.set_dhcp(dhcp_ipv4);
+                config.set_dhcpv6(dhcp_ipv6);
+                let normalized = CoreInstanceConfig::from_toml(&config).unwrap();
+                let routes = &normalized.peer.snapshot.runtime.core.routes;
+                assert_eq!(routes.ipv4.is_some(), !dhcp_ipv4);
+                assert_eq!(routes.ipv6.is_some(), !dhcp_ipv6);
+                assert_eq!(config.get_ipv4().unwrap(), "10.20.0.7/24".parse().unwrap());
+                assert_eq!(config.get_ipv6().unwrap(), "fd12::7/64".parse().unwrap());
+            }
+        }
+    }
 
     #[test]
     fn tcp_stun_servers_follow_toml_override_rules() {
@@ -784,5 +857,26 @@ data_compress_algo = "Zstd"
                 CompressionAlgoPb::None as i32
             }
         );
+    }
+}
+
+#[cfg(test)]
+mod host_capability_tests {
+    use super::CoreInstanceHostConfig;
+
+    #[test]
+    fn set_smoltcp_stack_marks_the_host_as_capable_and_dependent() {
+        let mut config = CoreInstanceHostConfig::default();
+        config.set_smoltcp_stack(true);
+        assert!(config.smoltcp_available);
+        assert!(config.requires_smoltcp);
+    }
+
+    #[test]
+    fn set_smoltcp_stack_does_not_claim_a_missing_stack() {
+        let mut config = CoreInstanceHostConfig::default();
+        config.set_smoltcp_stack(false);
+        assert!(!config.smoltcp_available);
+        assert!(!config.requires_smoltcp);
     }
 }

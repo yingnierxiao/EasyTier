@@ -531,6 +531,8 @@ impl NetworkApi {
                     support_config_source: false,
                     failed_network_instances: Vec::new(),
                     support_heartbeat_policy: false,
+                    support_manual_routes_patch: false,
+                    support_dns_config_patch: None,
                 }),
             };
             machines.push(ListMachineItem {
@@ -1059,6 +1061,7 @@ mod tests {
                     let config = super::super::ConsoleInfoConfig {
                         config_server_protocol: "tcp".into(),
                         config_server_port: 22020,
+                        config_server_host: None,
                         webhook_auth: true,
                     };
                     let machines = NetworkApi::handle_list_machines(

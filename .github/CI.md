@@ -34,13 +34,31 @@ Compilation outputs are cached. Ordinary pushes do not cancel full builds.
 
 ## Nightly
 
-Scheduled at 03:17 Asia/Shanghai. Check Core, GUI, Mobile, and Test separately
-on each existing `main`/`develop` branch. Compare HEAD with that workflow's
-latest successful `workflow_dispatch` run: skip matching commits; dispatch
-otherwise. Commits without a successful run are retried on the next check.
-
-Nightly only dispatches jobs; results appear in the corresponding workflows.
+Scheduled at 03:17 Asia/Shanghai, or started manually on `main`. Check Core,
+GUI, Mobile, and Test separately. Compare main HEAD with that workflow's latest
+successful `workflow_dispatch` run: skip matching commits; dispatch otherwise.
 Core's `sign_windows` is set to `false` for nightly builds.
+
+Nightly waits for the dispatched runs, retrying failed jobs once. A second
+failure or a cancelled run fails Nightly and prevents publication. The build
+and wait job has a three-hour timeout. Once all four components succeed at the
+same commit, Nightly updates the rolling `nightly` prerelease using that commit,
+even if main advances while builds are running. If main changes between the
+dispatch requests and the builds target different commits, Nightly fails and
+must be started again.
+
+Builds dispatched with `GITHUB_TOKEN` do not trigger downstream `workflow_run`
+jobs, so scheduled publication and retries run directly in Nightly. Completion
+events still handle full main builds dispatched manually by a maintainer.
+Nightly Release can also be started manually to publish existing main HEAD
+builds without rebuilding them.
+
+Nightly uses the same asset names and archive layout as version releases.
+Core, Web, and Magisk ZIP names include the built commit's version (for example,
+`easytier-linux-x86_64-v2.7.0.zip`). GUI installers and Android APKs retain their
+original filenames without an extra ZIP wrapper. `SHA256SUMS` covers every
+download. Asset URLs can change when the project version changes; use the
+fixed `nightly` release page to find the current files.
 
 ## Manual builds and releases
 

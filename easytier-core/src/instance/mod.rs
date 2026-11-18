@@ -10,7 +10,7 @@ mod management;
 mod management_extension;
 mod management_state;
 pub mod manager;
-mod packet_io;
+pub(crate) mod packet_io;
 mod packet_plane;
 #[cfg(feature = "proxy-packet")]
 mod packet_proxy_extension;
@@ -58,7 +58,7 @@ use crate::{
         },
     },
     events::CoreEventSink,
-    gateway::dhcp::DhcpIpv4Host,
+    gateway::dhcp::DhcpHost,
     host::{
         dns::{DnsRecordResolver, DnsResolver},
         packet::{HostPacketReceiver, PacketSink, host_packet_channel},
@@ -96,8 +96,8 @@ use crate::gateway::vpn_portal::PortalRuntimeConfig;
 #[cfg(feature = "public-ipv6-provider")]
 use crate::peers::public_ipv6::provider::PublicIpv6ProviderPlatform;
 
-#[cfg(feature = "dhcp-ipv4")]
-use crate::gateway::dhcp::DhcpIpv4Runtime;
+#[cfg(any(feature = "dhcp-ipv4", feature = "dhcp-ipv6"))]
+use crate::gateway::dhcp::DhcpRuntime;
 #[cfg(feature = "proxy-cidr-monitor")]
 use crate::gateway::proxy::cidr_monitor::ProxyCidrMonitorRuntime;
 #[cfg(feature = "proxy-packet")]
@@ -238,7 +238,7 @@ pub trait InstanceRuntimeHost: std::any::Any + Send + Sync + 'static {
     async fn prepare(
         &self,
         packet_plane: Arc<CorePacketPlane>,
-    ) -> anyhow::Result<Option<Arc<dyn DhcpIpv4Host>>>;
+    ) -> anyhow::Result<Option<Arc<dyn DhcpHost>>>;
 
     async fn shutdown(&self);
 
@@ -276,7 +276,7 @@ impl InstanceRuntimeHost for () {
     async fn prepare(
         &self,
         _packet_plane: Arc<CorePacketPlane>,
-    ) -> anyhow::Result<Option<Arc<dyn DhcpIpv4Host>>> {
+    ) -> anyhow::Result<Option<Arc<dyn DhcpHost>>> {
         Ok(None)
     }
 
@@ -435,8 +435,8 @@ where
     packet_proxy: Arc<CoreProxyModule<H>>,
     #[cfg(feature = "proxy-cidr-monitor")]
     proxy_cidr_monitor: ProxyCidrMonitorRuntime,
-    #[cfg(feature = "dhcp-ipv4")]
-    dhcp_ipv4: DhcpIpv4Runtime,
+    #[cfg(any(feature = "dhcp-ipv4", feature = "dhcp-ipv6"))]
+    dhcp: DhcpRuntime,
     pub(super) packet_egress: Arc<dyn PacketEgressHost>,
     pub(super) packet_receiver: Mutex<Option<HostPacketReceiver>>,
     pub(super) peer_center: Arc<PeerCenterInstance>,
@@ -534,6 +534,7 @@ where
             public_ipv6_host,
             public_ipv6_events,
         );
+        let running_listeners = Arc::new(RunningListenerRegistry::default());
         let stun = (connectivity_mode == CoreConnectivityMode::Full)
             .then(|| Self::prepare_stun(&adapters, &config.connectivity));
         let (peer_stun, foreign_rpc_registrar): (
@@ -545,6 +546,7 @@ where
                 Arc::new(ForeignDirectConnectorRpcRegistrar::new(
                     adapters.host.clone(),
                     stun.clone(),
+                    running_listeners.clone(),
                 )),
             ),
             None => (Arc::new(()), Arc::new(())),
@@ -636,7 +638,6 @@ where
                 accepted_tunnel_handler.clone(),
             )),
         };
-        let running_listeners = Arc::new(RunningListenerRegistry::default());
         let PreparedListenerPlan {
             transports,
             external,
@@ -889,8 +890,8 @@ where
             packet_proxy,
             #[cfg(feature = "proxy-cidr-monitor")]
             proxy_cidr_monitor,
-            #[cfg(feature = "dhcp-ipv4")]
-            dhcp_ipv4: DhcpIpv4Runtime::new(),
+            #[cfg(any(feature = "dhcp-ipv4", feature = "dhcp-ipv6"))]
+            dhcp: DhcpRuntime::new(),
             packet_egress,
             packet_receiver: Mutex::new(Some(packet_rx)),
             peer_center,
@@ -941,26 +942,63 @@ where
             anyhow::bail!("runtime config cannot update while instance is stopping or stopped");
         }
         self.validate_runtime_config_capabilities(&config)?;
+        #[cfg(feature = "proxy-smoltcp-stack")]
+        let prepared = self.prepare_port_forwards(&config).await?;
+        self.commit_runtime_config_under_operation(
+            config,
+            #[cfg(feature = "proxy-smoltcp-stack")]
+            prepared,
+            || (),
+        )
+        .await
+    }
+
+    #[cfg(feature = "proxy-smoltcp-stack")]
+    pub(crate) async fn prepare_port_forwards(
+        &self,
+        config: &CoreInstanceRuntimeConfig,
+    ) -> anyhow::Result<Option<crate::gateway::PreparedPortForwards<H>>> {
+        self.port_forward_adapter
+            .prepare(&config.services.gateway.port_forwards)
+            .await
+    }
+
+    pub(crate) async fn commit_runtime_config_under_operation(
+        &self,
+        config: CoreInstanceRuntimeConfig,
+        #[cfg(feature = "proxy-smoltcp-stack")] prepared: Option<
+            crate::gateway::PreparedPortForwards<H>,
+        >,
+        commit_config: impl FnOnce(),
+    ) -> anyhow::Result<()> {
         #[cfg(feature = "test-utils")]
         let reload_acl = self.runtime_config.snapshot().services.acl != config.services.acl;
-        let published = self.peer_manager.update_runtime_config(config).await?;
+        let (published, cleanup) = self
+            .peer_manager
+            .update_runtime_config_with(config, || {
+                #[cfg(feature = "proxy-smoltcp-stack")]
+                let cleanup = prepared.map(|prepared| prepared.commit());
+                #[cfg(not(feature = "proxy-smoltcp-stack"))]
+                let cleanup: Option<tokio::task::JoinHandle<()>> = None;
+                commit_config();
+                cleanup
+            })
+            .await?;
         #[cfg(feature = "test-utils")]
         if reload_acl {
             self.acl_reload_count.fetch_add(1, Ordering::Relaxed);
         }
         self.proxy_cidr_table
             .update_snapshot(proxy_cidr_snapshot(&published));
-        #[cfg(feature = "proxy-smoltcp-stack")]
-        self.port_forward_adapter
-            .reload(
-                &self
-                    .runtime_config
-                    .snapshot()
-                    .services
-                    .gateway
-                    .port_forwards,
-            )
-            .await?;
+        if let Some(cleanup) = cleanup {
+            let _ = cleanup.await;
+        }
+        #[cfg(feature = "proxy-packet")]
+        if self.state() == CoreInstanceState::Running && self.startup_plan.packet_proxy {
+            // A running instance may gain its first proxy network here. Start
+            // from the published configuration, just as during initial startup.
+            self.start_packet_proxy().await?;
+        }
         Ok(())
     }
 

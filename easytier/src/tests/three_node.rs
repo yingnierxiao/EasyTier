@@ -42,6 +42,7 @@ use crate::{
     },
     tunnel::common::tests::{
         _tunnel_bench_netns, _tunnel_pingpong_netns_with_timeout, wait_for_condition,
+        wait_for_condition_named,
     },
 };
 
@@ -456,6 +457,8 @@ fn connect_ns_to_bridge(ns: &str, guest_if: &str, host_if: &str, bridge: &str) {
 
 struct PublicIpv6Lab {
     network: TestNetwork,
+    #[cfg(feature = "tun")]
+    shared_virtual_nic_registry: crate::instance::shared_virtual_nic::ArcSharedVirtualNicRegistry,
 }
 
 #[derive(Clone, Copy)]
@@ -642,7 +645,30 @@ impl PublicIpv6Lab {
             "net.ipv6.conf.all.forwarding=1",
         );
 
-        Self { network }
+        Self {
+            network,
+            #[cfg(feature = "tun")]
+            shared_virtual_nic_registry: Instance::new_shared_virtual_nic_registry(),
+        }
+    }
+
+    fn new_instance(
+        &self,
+        config: TomlConfigLoader,
+        process_runtime: Arc<CoreProcessRuntime>,
+    ) -> Instance {
+        // Reconnect through the same registry, as NativeInstanceFactory does,
+        // so old member cleanup and new registration share the TUN owner.
+        #[cfg(feature = "tun")]
+        {
+            Instance::new_with_process_runtime_and_shared_virtual_nic_registry(
+                config,
+                process_runtime,
+                self.shared_virtual_nic_registry.clone(),
+            )
+        }
+        #[cfg(not(feature = "tun"))]
+        Instance::new_with_process_runtime(config, process_runtime)
     }
 }
 
@@ -701,8 +727,8 @@ async fn init_public_ipv6_two_node_with_topology(
     );
     client_cfg.set_ipv6_public_addr_auto(true);
 
-    let mut provider = Instance::new_with_process_runtime(provider_cfg, process_runtime.clone());
-    let mut client = Instance::new_with_process_runtime(client_cfg, process_runtime.clone());
+    let mut provider = lab.new_instance(provider_cfg, process_runtime.clone());
+    let mut client = lab.new_instance(client_cfg, process_runtime.clone());
 
     provider.run().await.unwrap();
     client.run().await.unwrap();
@@ -984,7 +1010,7 @@ pub async fn public_ipv6_auto_addr_reconnect_reuses_same_address() {
         client_id,
     );
     client_cfg.set_ipv6_public_addr_auto(true);
-    let mut client = Instance::new_with_process_runtime(client_cfg, process_runtime.clone());
+    let mut client = lab.new_instance(client_cfg, process_runtime.clone());
     client.run().await.unwrap();
     provider.add_connector_url("tcp://10.1.1.2:11010".parse().unwrap());
 
@@ -1014,6 +1040,166 @@ pub async fn public_ipv6_auto_addr_reconnect_reuses_same_address() {
     .await;
 
     drop_insts(vec![provider, client]).await;
+}
+
+#[cfg(feature = "tun")]
+#[tokio::test]
+#[serial_test::serial]
+pub async fn shared_tun_public_ipv6_auto_addr_end_to_end() {
+    let lab = PublicIpv6Lab::setup_with_topology(PublicIpv6LabTopology::DelegatedPrefix);
+    let provider_dev = format!("st{:08x}", rand::random::<u32>());
+    let client_dev = format!("st{:08x}", rand::random::<u32>());
+    let process_runtime = CoreProcessRuntime::new();
+    let shared_virtual_nic_registry = Instance::new_shared_virtual_nic_registry();
+
+    let provider_cfg = get_public_ipv6_config(
+        "provider_shared_public_ipv6",
+        lab.network.namespace(PublicIpv6Lab::PROVIDER_NS),
+        "10.144.144.1",
+        &provider_dev,
+        uuid::Uuid::parse_str("44444444-4444-4444-4444-444444444444").unwrap(),
+    );
+    provider_cfg.set_ipv6_public_addr_provider(true);
+
+    let client_cfg = get_public_ipv6_config(
+        "client_shared_public_ipv6",
+        lab.network.namespace(PublicIpv6Lab::CLIENT_NS),
+        "10.144.144.2",
+        &client_dev,
+        uuid::Uuid::parse_str("55555555-5555-5555-5555-555555555555").unwrap(),
+    );
+    client_cfg.set_ipv6_public_addr_auto(true);
+
+    let client_peer_cfg = get_public_ipv6_config(
+        "client_shared_public_ipv6_peer",
+        lab.network.namespace(PublicIpv6Lab::CLIENT_NS),
+        "10.144.145.3",
+        &client_dev,
+        uuid::Uuid::parse_str("66666666-6666-6666-6666-666666666666").unwrap(),
+    );
+    client_peer_cfg.set_listeners(vec![]);
+
+    let mut provider = Instance::new_with_process_runtime_and_shared_virtual_nic_registry(
+        provider_cfg,
+        process_runtime.clone(),
+        shared_virtual_nic_registry.clone(),
+    );
+    let mut client = Instance::new_with_process_runtime_and_shared_virtual_nic_registry(
+        client_cfg,
+        process_runtime.clone(),
+        shared_virtual_nic_registry.clone(),
+    );
+    let mut client_peer = Instance::new_with_process_runtime_and_shared_virtual_nic_registry(
+        client_peer_cfg,
+        process_runtime,
+        shared_virtual_nic_registry,
+    );
+    let mut client_events = client.get_global_ctx().subscribe();
+    let mut client_peer_events = client_peer.get_global_ctx().subscribe();
+
+    provider.run().await.unwrap();
+    client.run().await.unwrap();
+    client_peer.run().await.unwrap();
+
+    let shared_ifname = wait_for_tun_ready(&mut client_events).await;
+    assert_eq!(
+        shared_ifname,
+        wait_for_tun_ready(&mut client_peer_events).await
+    );
+    assert_eq!(shared_ifname, client_dev);
+
+    provider.add_connector_url("tcp://10.1.1.2:11010".parse().unwrap());
+
+    wait_for_condition(
+        || async {
+            provider.get_core_instance().route_snapshots().await.len() == 1
+                && client.get_core_instance().route_snapshots().await.len() == 1
+        },
+        Duration::from_secs(8),
+    )
+    .await;
+
+    wait_for_condition(
+        || async {
+            provider
+                .get_core_instance()
+                .node_snapshot()
+                .await
+                .ipv6_public_addr_prefix
+                == Some(PublicIpv6Lab::PROVIDER_PREFIX.parse().unwrap())
+        },
+        Duration::from_secs(10),
+    )
+    .await;
+
+    let leased = wait_for_public_ipv6_addr(&client).await;
+    wait_for_public_ipv6_route(&provider, leased).await;
+
+    wait_for_condition(
+        || async {
+            addr_exists_in_ns(
+                lab.network.namespace(PublicIpv6Lab::CLIENT_NS),
+                &client_dev,
+                &leased.to_string(),
+            ) && route_exists_in_ns(
+                lab.network.namespace(PublicIpv6Lab::CLIENT_NS),
+                &format!("default dev {client_dev}"),
+            ) && route_exists_in_ns(
+                lab.network.namespace(PublicIpv6Lab::PROVIDER_NS),
+                &format!("{} dev {provider_dev}", leased.address()),
+            )
+        },
+        Duration::from_secs(10),
+    )
+    .await;
+
+    wait_for_condition(
+        || async {
+            ping6_test(
+                lab.network.namespace(PublicIpv6Lab::CLIENT_NS),
+                PublicIpv6Lab::SERVER_IP,
+                None,
+            )
+            .await
+        },
+        Duration::from_secs(10),
+    )
+    .await;
+
+    wait_for_condition(
+        || async {
+            ping6_test(
+                lab.network.namespace(PublicIpv6Lab::SERVER_NS),
+                leased.address().to_string().as_str(),
+                None,
+            )
+            .await
+        },
+        Duration::from_secs(10),
+    )
+    .await;
+
+    drop_insts(vec![provider, client, client_peer]).await;
+    drop(lab);
+}
+
+#[cfg(feature = "tun")]
+async fn wait_for_tun_ready(
+    receiver: &mut tokio::sync::broadcast::Receiver<crate::common::global_ctx::GlobalCtxEvent>,
+) -> String {
+    tokio::time::timeout(Duration::from_secs(5), async {
+        loop {
+            match receiver.recv().await.unwrap() {
+                crate::common::global_ctx::GlobalCtxEvent::TunDeviceReady(ifname) => return ifname,
+                crate::common::global_ctx::GlobalCtxEvent::TunDeviceError(error) => {
+                    panic!("tun device error: {error}")
+                }
+                _ => {}
+            }
+        }
+    })
+    .await
+    .expect("timed out waiting for tun ready")
 }
 
 #[rstest::rstest]
@@ -1915,8 +2101,13 @@ pub async fn wireguard_vpn_portal(#[values(true, false)] test_v6: bool) {
                 config
                     .add_proxy_cidr("198.51.100.0/24".parse().unwrap(), None)
                     .unwrap();
+                let mut flags = config.get_flags();
+                flags.enable_exit_node = true;
+                flags.use_smoltcp = true;
+                config.set_flags(flags);
             }
             if config.get_inst_name() == "inst3" {
+                config.set_exit_nodes(vec!["10.144.144.1".parse().unwrap()]);
                 config.set_vpn_portal_config(VpnPortalConfig {
                     enabled: None,
                     wireguard_listen: "0.0.0.0:22121".parse().unwrap(),
@@ -1977,7 +2168,7 @@ pub async fn wireguard_vpn_portal(#[values(true, false)] test_v6: bool) {
         dst_socket_addr,
         Key::try_from(server_public.as_slice()).unwrap(),
         Key::try_from(client_private.as_slice()).unwrap(),
-        vec!["10.144.144.0/24".to_string()],
+        vec!["10.144.144.0/24".to_string(), "10.1.1.1/32".to_string()],
         "10.144.144.4".to_owned(),
     )
     .unwrap();
@@ -1997,6 +2188,14 @@ pub async fn wireguard_vpn_portal(#[values(true, false)] test_v6: bool) {
     // ping portal node
     wait_for_condition(
         || async { ping_test(network.namespace("net_d"), "10.144.144.3", None).await },
+        Duration::from_secs(5),
+    )
+    .await;
+
+    // This address is outside the mesh and advertised proxy CIDRs, on a
+    // separate bridge reachable only through the configured exit node.
+    wait_for_condition(
+        || async { ping_test(network.namespace("net_d"), "10.1.1.1", None).await },
         Duration::from_secs(5),
     )
     .await;
@@ -2683,6 +2882,161 @@ pub async fn foreign_network_functional_cluster() {
 #[rstest::rstest]
 #[tokio::test]
 #[serial_test::serial]
+async fn foreign_network_advertises_listeners_for_direct_connect(
+    #[values("tcp", "udp")] protocol: &str,
+) {
+    use easytier_proto::{
+        peer_rpc::{DirectConnectorRpc, DirectConnectorRpcClientFactory, GetIpListRequest},
+        rpc_types::controller::BaseController,
+    };
+
+    let mut network = TestNetwork::new();
+    network.create_bridge("br");
+    let process_runtime = CoreProcessRuntime::new();
+    let mut instances = Vec::new();
+    for (index, name) in ["server_a", "server_b", "client_a", "client_b"]
+        .into_iter()
+        .enumerate()
+    {
+        network.create_namespace(
+            name,
+            &format!("10.81.0.{}/24", index + 1),
+            &format!("fd81::{}/64", index + 1),
+        );
+        network.add_to_bridge("br", name);
+        let config = TomlConfigLoader::default();
+        config.set_inst_name(name.to_owned());
+        config.set_netns(Some(network.namespace(name).to_owned()));
+        config.set_network_identity(NetworkIdentity::new(
+            if index < 2 {
+                "public-net"
+            } else {
+                "client-net"
+            }
+            .to_owned(),
+            String::new(),
+        ));
+        config.set_listeners(if index < 2 {
+            // Keep listener discovery independent of interface collection in netns.
+            vec![
+                format!("{protocol}://10.81.0.{}:11010", index + 1)
+                    .parse()
+                    .unwrap(),
+            ]
+        } else {
+            Vec::new()
+        });
+        let mut flags = config.get_flags();
+        flags.no_tun = true;
+        flags.enable_ipv6 = false;
+        flags.disable_udp_hole_punching = true;
+        flags.disable_tcp_hole_punching = true;
+        flags.relay_all_peer_rpc = true;
+        if index == 1 {
+            // The second server only relays RPC, as in the reported topology.
+            flags.relay_network_whitelist = String::new();
+            flags.disable_relay_data = true;
+        }
+        config.set_flags(flags);
+        assert!(config.get_mapped_listeners().is_empty());
+        let mut instance = Instance::new_with_process_runtime(config, process_runtime.clone());
+        instance.run().await.unwrap();
+        set_foreign_network_refresh_interval(&instance, 1).await;
+        instances.push(instance);
+    }
+    let [server_a, server_b, client_a, client_b] = instances.as_slice() else {
+        unreachable!()
+    };
+    // Bootstrap only the cluster link and each client's local server.
+    // Connections to the other server must use its advertised TCP/UDP listener.
+    server_a.add_connector_url(server_b.ring_listener_url());
+    client_a.add_connector_url(server_a.ring_listener_url());
+    client_b.add_connector_url(server_b.ring_listener_url());
+
+    for (client, remote_server) in [(client_a, server_b), (client_b, server_a)] {
+        let client = client.get_core_instance();
+        let remote_server = remote_server.get_core_instance();
+        wait_for_condition_named(
+            || async {
+                remote_server
+                    .foreign_network_snapshots(false)
+                    .await
+                    .contains_key("client-net")
+            },
+            Duration::from_secs(10),
+            "client-net foreign network snapshot on remote server",
+        )
+        .await;
+        let remote_peer_id = remote_server.foreign_network_snapshots(false).await["client-net"]
+            .my_peer_id_for_this_network;
+        wait_for_condition_named(
+            || async {
+                client
+                    .route_snapshots()
+                    .await
+                    .iter()
+                    .any(|route| route.peer_id == remote_peer_id)
+            },
+            Duration::from_secs(10),
+            "route to remote peer on client",
+        )
+        .await;
+        // The reply is routed back by the remote server, so wait until it has
+        // learned the client peer in the client network as well.
+        let client_peer_id = client.peer_id();
+        wait_for_condition_named(
+            || async {
+                remote_server
+                    .foreign_network_has_gateway_for_test("client-net", client_peer_id)
+                    .await
+                    .unwrap_or(false)
+            },
+            Duration::from_secs(10),
+            "client peer learned by remote server in client-net",
+        )
+        .await;
+        let rpc = client
+            .peer_manager()
+            .get_peer_rpc_mgr()
+            .rpc_client()
+            .scoped_client::<DirectConnectorRpcClientFactory<BaseController>>(
+            client.peer_id(),
+            remote_peer_id,
+            "client-net".to_owned(),
+        );
+        let listeners = rpc
+            .get_ip_list(BaseController::default(), GetIpListRequest {})
+            .await
+            .unwrap()
+            .listeners
+            .into_iter()
+            .map(url::Url::from)
+            .collect::<Vec<_>>();
+        assert_eq!(listeners, remote_server.running_listeners());
+        wait_for_condition_named(
+            || async {
+                client.peer_snapshots().await.iter().any(|peer| {
+                    peer.peer_id == remote_peer_id
+                        && peer.conns.iter().any(|conn| {
+                            conn.is_client
+                                && conn
+                                    .tunnel
+                                    .as_ref()
+                                    .is_some_and(|tunnel| tunnel.tunnel_type == protocol)
+                        })
+                })
+            },
+            Duration::from_secs(10),
+            "direct connection over {protocol}",
+        )
+        .await;
+    }
+    drop_insts(instances).await;
+}
+
+#[rstest::rstest]
+#[tokio::test]
+#[serial_test::serial]
 pub async fn manual_reconnector(#[values(true, false)] is_foreign: bool) {
     let network = prepare_linux_namespaces();
     let process_runtime = CoreProcessRuntime::new();
@@ -2986,6 +3340,28 @@ pub async fn port_forward_with_inbound_default_drop_acl_test(
         .await;
     }
 
+    // The port forward resolves its destination through the outbound packet
+    // router, which can lag behind the peer route snapshots that
+    // `init_three_node_ex` waits for. Gate on the router itself so the first
+    // forwarded connection is not reset by a transient lookup miss.
+    for dst in ["10.144.144.3", "10.1.2.4"] {
+        let dst: std::net::Ipv4Addr = dst.parse().unwrap();
+        wait_for_condition_named(
+            || async {
+                !insts[0]
+                    .get_core_instance()
+                    .peer_manager()
+                    .get_msg_dst_peer_ipv4(&dst)
+                    .await
+                    .0
+                    .is_empty()
+            },
+            Duration::from_secs(10),
+            "port forward destination route",
+        )
+        .await;
+    }
+
     for (bind_port, server_ns) in [
         (23456, network.namespace("net_c")),
         (23457, network.namespace("net_d")),
@@ -3054,18 +3430,26 @@ pub async fn relay_bps_limit_test(#[values(100, 200, 400, 800)] bps_limit: u64) 
     let tcp_listener = core_tcp_listener("tcp://0.0.0.0:22223".parse().unwrap());
     let tcp_connector = core_tcp_dialer("tcp://10.144.144.3:22223".parse().unwrap());
 
-    let bps = _tunnel_bench_netns(
+    // The relay keys its forward limiter by the peer network name, which is
+    // the dialing instance's identity, not inst2's own "public" one.
+    let relay_network = insts[0].get_core_instance().network_name_for_test();
+    let meter = || relay_forward_metered_bytes(&insts[1], &relay_network);
+
+    let (bps, metered) = _tunnel_bench_netns(
         tcp_listener,
         tcp_connector,
         NetNS::new(Some(network.namespace("net_c").into())),
         NetNS::new(Some(network.namespace("net_a").into())),
+        Some(&meter),
     )
     .await;
+    let metered = metered.expect("metered window should be sampled");
 
-    println!("bps: {}", bps);
-
-    let bps = bps as u64 / 1024;
-    assert_limited_payload_bps(bps, bps_limit);
+    println!(
+        "payload bps: {}, metered: {} over {:?}",
+        bps, metered.0, metered.1
+    );
+    assert_limited_bps(metered, bps, bps_limit);
 
     drop_insts(insts).await;
 }
@@ -3093,33 +3477,67 @@ pub async fn instance_recv_bps_limit_test(#[values(100, 800)] bps_limit: u64) {
     let tcp_listener = core_tcp_listener("tcp://0.0.0.0:22223".parse().unwrap());
     let tcp_connector = core_tcp_dialer("tcp://10.144.144.3:22223".parse().unwrap());
 
-    let bps = _tunnel_bench_netns(
+    let meter = || instance_recv_metered_bytes(&insts[1]);
+
+    let (bps, metered) = _tunnel_bench_netns(
         tcp_listener,
         tcp_connector,
         NetNS::new(Some(network.namespace("net_c").into())),
         NetNS::new(Some(network.namespace("net_a").into())),
+        Some(&meter),
     )
     .await;
+    let metered = metered.expect("metered window should be sampled");
 
-    println!("bps: {}", bps);
-
-    let bps = bps as u64 / 1024;
-    assert_limited_payload_bps(bps, bps_limit);
+    println!(
+        "payload bps: {}, metered: {} over {:?}",
+        bps, metered.0, metered.1
+    );
+    assert_limited_bps(metered, bps, bps_limit);
 
     drop_insts(insts).await;
 }
 
-fn assert_limited_payload_bps(bps: u64, bps_limit: u64) {
-    // The benchmark measures TCP application payload while the limiter counts
-    // EasyTier data payload, including the inner IP and transport headers.
-    let min_bps = bps_limit.saturating_sub((bps_limit / 10).max(50));
-    let max_bps = bps_limit + 50;
+fn relay_forward_metered_bytes(inst: &Instance, network_name: &str) -> u64 {
+    inst.get_core_instance()
+        .foreign_forward_metered_bytes_for_test(network_name)
+        .expect("relay forward limiter should be configured")
+}
+
+fn instance_recv_metered_bytes(inst: &Instance) -> u64 {
+    inst.get_core_instance()
+        .instance_recv_metered_bytes_for_test()
+        .expect("instance receive limiter should be configured")
+}
+
+fn assert_limited_bps(metered: (u64, Duration), payload_bps: usize, bps_limit: u64) {
+    // The limiter charges each packet with its EasyTier payload length, which
+    // includes the inner IP and transport headers, so its counter is the rate
+    // it actually enforced. The benchmark only sees TCP application payload,
+    // so comparing the two directly made this assertion flaky. The window
+    // starts once the initial bucket burst is drained.
+    let (bytes, window) = metered;
+    let expected = bps_limit as f64 * 1024.0 * window.as_secs_f64();
+    let slack = expected * 0.05;
     assert!(
-        bps >= min_bps && bps <= max_bps,
-        "bps: {}, expected: {}..={}",
-        bps,
-        min_bps,
-        max_bps
+        (bytes as f64) >= expected - slack && (bytes as f64) <= expected + slack,
+        "metered: {} over {:?}, expected: {:.0}..={:.0}",
+        bytes,
+        window,
+        expected - slack,
+        expected + slack
+    );
+
+    // Encapsulation only shrinks the payload the receiver sees, so a limiter
+    // whose rejection the forwarding path ignores still shows up here. The
+    // benchmark rounds its window down to whole seconds, which inflates the
+    // payload rate by a few percent, hence the same 50 KiB/s headroom.
+    let payload_bps = payload_bps as u64 / 1024;
+    assert!(
+        payload_bps <= bps_limit + 50,
+        "payload bps: {}, expected: <= {}",
+        payload_bps,
+        bps_limit + 50
     );
 }
 
@@ -5188,5 +5606,167 @@ pub async fn relay_peer_session_cleanup() {
     .await;
 
     drop(core_1);
+    drop_insts(insts).await;
+}
+
+#[rstest::rstest]
+#[case::ipv6_only(false, false)]
+#[case::dual_stack(true, false)]
+#[case::static_ipv4(false, true)]
+#[tokio::test]
+#[serial_test::serial]
+pub async fn dhcpv6_three_node_connectivity(#[case] dhcp_ipv4: bool, #[case] static_ipv4: bool) {
+    let network = prepare_linux_namespaces();
+    let insts = init_three_node_ex(
+        &network,
+        "udp",
+        |cfg| {
+            if !static_ipv4 {
+                cfg.set_ipv4(None);
+            }
+            cfg.set_ipv6(None);
+            cfg.set_dhcp(dhcp_ipv4);
+            cfg.set_dhcpv6_config(easytier_core::config::DhcpConfig::Cidr(
+                "fd42:1234::/64".parse().unwrap(),
+            ));
+            cfg
+        },
+        false,
+    )
+    .await;
+    wait_for_condition(
+        || async {
+            insts.iter().all(|inst| {
+                inst.get_global_ctx().get_ipv6().is_some()
+                    && (!dhcp_ipv4 || inst.get_global_ctx().get_ipv4().is_some())
+            })
+        },
+        Duration::from_secs(30),
+    )
+    .await;
+    let addresses = insts
+        .iter()
+        .map(|inst| inst.get_global_ctx().get_ipv6().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        addresses
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len(),
+        3
+    );
+    for address in &addresses {
+        assert_eq!(address.network(), "fd42:1234::/64".parse().unwrap());
+    }
+    // DHCP can temporarily assign the same IPv4 address to multiple peers.
+    // Wait for conflict resolution and route propagation in both directions
+    // before opening connections; IPv6 readiness alone does not imply this.
+    wait_for_condition(
+        || async {
+            let ipv4_addresses = insts
+                .iter()
+                .map(|inst| inst.get_global_ctx().get_ipv4())
+                .collect::<Vec<_>>();
+            if (dhcp_ipv4 || static_ipv4)
+                && ipv4_addresses
+                    .iter()
+                    .flatten()
+                    .map(|address| address.address())
+                    .collect::<std::collections::HashSet<_>>()
+                    .len()
+                    != insts.len()
+            {
+                return false;
+            }
+            for inst in &insts {
+                let routes = inst.get_core_instance().route_snapshots().await;
+                if routes.len() != insts.len() - 1 {
+                    return false;
+                }
+                for (index, peer) in insts.iter().enumerate() {
+                    if peer.peer_id() == inst.peer_id() {
+                        continue;
+                    }
+                    if !routes.iter().any(|route| {
+                        route.peer_id == peer.peer_id()
+                            && route.ipv6_addr == Some(addresses[index].into())
+                            && route.ipv4_addr == ipv4_addresses[index].map(Into::into)
+                    }) {
+                        return false;
+                    }
+                }
+            }
+            true
+        },
+        Duration::from_secs(15),
+    )
+    .await;
+    for (index, inst) in insts.iter().enumerate() {
+        let info = easytier_core::management::network_instance_running_info(
+            inst.get_core_instance().as_ref(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            info.my_node_info.unwrap().virtual_ipv6,
+            Some(addresses[index].into())
+        );
+        easytier_core::management::apply_config_patch(
+            &inst.get_core_instance(),
+            easytier_proto::api::config::InstanceConfigPatch {
+                ipv6: Some("fd55::1/64".parse::<cidr::Ipv6Inet>().unwrap().into()),
+                ..Default::default()
+            },
+            None,
+        )
+        .await
+        .unwrap();
+        assert_eq!(inst.get_global_ctx().get_ipv6(), Some(addresses[index]));
+        if static_ipv4 {
+            assert_eq!(
+                inst.get_global_ctx()
+                    .get_ipv4()
+                    .unwrap()
+                    .address()
+                    .to_string(),
+                format!("10.144.144.{}", index + 1)
+            );
+        } else if !dhcp_ipv4 {
+            assert!(inst.get_global_ctx().get_ipv4().is_none());
+        }
+    }
+    _tunnel_pingpong_netns_with_timeout(
+        core_tcp_listener("tcp://[::]:23461".parse().unwrap()),
+        core_tcp_dialer(
+            format!("tcp://[{}]:23461", addresses[2].address())
+                .parse()
+                .unwrap(),
+        ),
+        NetNS::new(Some(network.namespace("net_c").into())),
+        NetNS::new(Some(network.namespace("net_a").into())),
+        vec![0x6; 256],
+        Duration::from_secs(10),
+    )
+    .await
+    .unwrap();
+    if dhcp_ipv4 || static_ipv4 {
+        _tunnel_pingpong_netns_with_timeout(
+            core_tcp_listener("tcp://0.0.0.0:23462".parse().unwrap()),
+            core_tcp_dialer(
+                format!(
+                    "tcp://{}:23462",
+                    insts[2].get_global_ctx().get_ipv4().unwrap().address()
+                )
+                .parse()
+                .unwrap(),
+            ),
+            NetNS::new(Some(network.namespace("net_c").into())),
+            NetNS::new(Some(network.namespace("net_a").into())),
+            vec![0x4; 256],
+            Duration::from_secs(10),
+        )
+        .await
+        .unwrap();
+    }
     drop_insts(insts).await;
 }

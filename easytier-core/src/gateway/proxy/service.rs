@@ -379,12 +379,12 @@ where
             return Ok(());
         }
 
+        // Runtime updates can be cancelled while a host operation is pending.
+        // Roll back the startup flags and resources so a later update can retry.
+        let rollback = guarden::guard! { self.stop_started(); };
         self.runtime.latch_smoltcp();
         self.tcp_started.store(true, Ordering::Release);
-        if let Err(error) = self.tcp.start(true).await {
-            self.stop_started();
-            return Err(error);
-        }
+        self.tcp.start(true).await?;
 
         if let Some(icmp) = &self.icmp {
             self.icmp_started.store(true, Ordering::Release);
@@ -398,7 +398,6 @@ where
                     .proxy
                     .icmp_failure_is_fatal
                 {
-                    self.stop_started();
                     return Err(error);
                 }
                 tracing::warn!(?error, "optional ICMP proxy runtime failed to start");
@@ -407,12 +406,16 @@ where
 
         self.udp_started.store(true, Ordering::Release);
         self.udp.start().await;
+        rollback.defuse();
         Ok(())
     }
 
     pub(crate) async fn stop(&self) {
         let _operation = self.operation.lock().await;
         self.stop_started();
+        // Rollback only requests cancellation; normal shutdown must also wait
+        // for TCP tasks to release their listeners and streams.
+        self.tcp.stop_and_wait().await;
     }
 }
 

@@ -12,6 +12,7 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import android.webkit.WebView
+import org.json.JSONArray
 
 @InvokeArg
 class PingArgs {
@@ -19,8 +20,14 @@ class PingArgs {
 }
 
 @InvokeArg
+class ManagementSnapshotArgs {
+    var snapshot: String = ""
+}
+
+@InvokeArg
 class StartVpnArgs {
     var ipv4Addr: String? = null
+    var ipv4Addrs: Array<String> = emptyArray()
     var routes: Array<String> = emptyArray()
     var dns: String? = null
     var disallowedApplications: Array<String> = emptyArray()
@@ -29,6 +36,30 @@ class StartVpnArgs {
 
 @TauriPlugin
 class VpnServicePlugin(private val activity: Activity) : Plugin(activity) {
+    @Command
+    @androidx.annotation.RequiresApi(23)
+    fun readManagementSnapshot(invoke: Invoke) {
+        try {
+            val result = JSObject()
+            result.put("snapshot", ManagementStorage.read(activity) ?: org.json.JSONObject.NULL)
+            invoke.resolve(result)
+        } catch (_: Exception) {
+            invoke.reject("Unable to read management storage; existing data was not replaced")
+        }
+    }
+
+    @Command
+    @androidx.annotation.RequiresApi(23)
+    fun writeManagementSnapshot(invoke: Invoke) {
+        try {
+            val args = invoke.parseArgs(ManagementSnapshotArgs::class.java)
+            ManagementStorage.write(activity, args.snapshot)
+            invoke.resolve()
+        } catch (_: Exception) {
+            invoke.reject("Unable to save management storage")
+        }
+    }
+
     companion object {
         @Volatile
         private var tileActionCallback: (String) -> Boolean = { false }
@@ -106,6 +137,7 @@ class VpnServicePlugin(private val activity: Activity) : Plugin(activity) {
             } else {
                 val intent = Intent(activity, TauriVpnService::class.java)
                 intent.putExtra(TauriVpnService.IPV4_ADDR, args.ipv4Addr)
+                intent.putExtra(TauriVpnService.IPV4_ADDRS, args.ipv4Addrs)
                 intent.putExtra(TauriVpnService.ROUTES, args.routes)
                 intent.putExtra(TauriVpnService.DNS, args.dns)
                 intent.putExtra(TauriVpnService.DISALLOWED_APPLICATIONS, args.disallowedApplications)
@@ -137,7 +169,8 @@ class VpnServicePlugin(private val activity: Activity) : Plugin(activity) {
         val ret = JSObject()
         ret.put("running", TauriVpnService.self != null)
         ret.put("ipv4Addr", TauriVpnService.ipv4Addr)
-        ret.put("routes", TauriVpnService.routes)
+        ret.put("ipv4Addrs", JSONArray(TauriVpnService.ipv4Addrs))
+        ret.put("routes", JSONArray(TauriVpnService.routes))
         ret.put("dns", TauriVpnService.dns)
         invoke.resolve(ret)
     }

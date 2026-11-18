@@ -31,13 +31,26 @@ Core 二进制、GUI 安装包、APK 和 Magisk 产物仅在全量模式上传�
 
 ## 每日构建
 
-定时为北京时间 03:17。对实际存在的 `main`/`develop` 分支，分别检查 Core、
-GUI、Mobile、Test：比较分支 HEAD 与该 workflow 最近一次成功的
+定时为北京时间 03:17，也可以在 `main` 上手动运行。分别检查 Core、GUI、
+Mobile、Test：比较 main HEAD 与该 workflow 最近一次成功的
 `workflow_dispatch` 提交，相同则跳过，不同或无成功记录则触发该 workflow。
-尚未成功构建的提交在下一轮继续触发。
+每日 Core 构建设置 `sign_windows: false`。
 
-Nightly 只负责触发，结果见对应 workflow。每日 Core 构建设置
-`sign_windows: false`。
+Nightly 等待已触发的构建结束，失败任务自动重试一次。再次失败或取消会使
+Nightly 失败并阻止发布，构建和等待任务的超时为三小时。四个组件在同一提交
+上全部成功后，Nightly 使用该提交更新固定的 `nightly` 预发布版本，即使等待
+期间 main 已有新提交。如果 main 在各次触发请求之间变化，导致构建提交不
+一致，Nightly 会失败，需要重新运行。
+
+`GITHUB_TOKEN` 触发的构建不会触发下游 `workflow_run` 任务，因此定时构建的
+发布和重试直接由 Nightly 执行。维护者手动触发的 main 全量构建仍由完成事件
+处理。也可手动运行 Nightly Release，使用 main HEAD 的现有成功构建直接发布。
+
+Nightly 的产物名称和压缩包目录结构与版本发布保持一致。Core、Web 和 Magisk
+ZIP 文件名包含构建提交中的版本号，例如 `easytier-linux-x86_64-v2.7.0.zip`。
+GUI 安装包和 Android APK 保留原始文件名，不再套一层 ZIP。`SHA256SUMS`
+包含所有下载文件的校验值。项目版本变化时产物下载地址也会变化，可通过固定的
+`nightly` 发布页面查找当前文件。
 
 ## 手动构建与发布
 

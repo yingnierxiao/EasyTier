@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { Button, Column, DataTable, Dialog, InputSwitch, InputText, Message, Skeleton, Tag, useToast } from 'primevue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { UrlListInput, Utils } from 'easytier-frontend-lib';
+import { NetworkTypes, UrlListInput, Utils } from 'easytier-frontend-lib';
 import ApiClient, { type CentralNetworkSettings, type CentralNetworkSummary, type GatewayInfo } from '../modules/api';
 import { normalizeVirtualSubnet } from '../modules/virtual-subnet';
 
@@ -33,12 +33,7 @@ const filteredNetworks = computed(() => {
 
 const gatewayEnabled = computed(() => gatewayInfo.value?.enabled === true);
 
-const protos: { [proto: string]: number } = {
-    tcp: 11010,
-    udp: 11010,
-    ws: 11011,
-    wss: 11012,
-};
+const protos = NetworkTypes.PEER_PROTOCOLS;
 
 const networkingMethodLabels: { [method: string]: () => string } = {
     PublicServer: () => t('public_server'),
@@ -55,6 +50,7 @@ const createVisible = ref(false);
 const creating = ref(false);
 const createForm = ref({
     display_name: '',
+    network_secret: '',
     virtual_cidr: '',
     secure_mode: false,
 });
@@ -99,6 +95,7 @@ onUnmounted(() => {
 const openCreate = () => {
     createForm.value = {
         display_name: '',
+        network_secret: '',
         virtual_cidr: '',
         // The built-in gateway speaks the Noise handshake; third-party
         // peers of advanced networking may not, so secure mode defaults on
@@ -137,7 +134,8 @@ const createNetwork = async () => {
                 secure_mode: createForm.value.secure_mode,
             };
         }
-        const detail = await api?.create_network(settings);
+        // An empty secret lets the server generate one.
+        const detail = await api?.create_network(settings, createForm.value.network_secret.trim() || undefined);
         createVisible.value = false;
         await loadNetworks();
         if (detail) {
@@ -212,6 +210,11 @@ const openNetwork = (network: CentralNetworkSummary) => {
                 <div class="flex flex-col gap-1">
                     <label for="network-display-name">{{ t('web.network_list.display_name') }}</label>
                     <InputText id="network-display-name" v-model="createForm.display_name" />
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label for="create-network-secret">{{ t('network_secret') }}</label>
+                    <InputText id="create-network-secret" v-model="createForm.network_secret"
+                        :placeholder="t('web.network_list.network_secret_placeholder')" />
                 </div>
                 <div class="flex flex-col gap-1">
                     <div class="flex items-center">
